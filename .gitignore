@@ -1,0 +1,25 @@
+# env
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+
+# data (keep structure, not files)
+data/raw/**
+data/interim/**
+data/processed/**
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+
+# outputs
+outputs/**
+reports/figures/**
+reports/tables/**
+!reports/figures/.gitkeep
+!reports/tables/.gitkeep
+!outputs/models/.gitkeep
+!outputs/metrics/.gitkeep
