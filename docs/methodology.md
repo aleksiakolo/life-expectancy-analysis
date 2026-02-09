@@ -1,312 +1,288 @@
 # Methodology
 
-## Data Preprocessing
-- Standardized country names and year formats
-- Removed duplicate country–year entries
-- Filtered implausible values (e.g., negative life expectancy)
-
-## Missing Value Handling
-- Low missingness: row-wise deletion
-- Medium missingness: median imputation (numeric)
-- High missingness: retained only if analytically essential
-- No imputation for target variable (life expectancy)
-
-## Feature Transformations
-- Log transformation for skewed variables (GDP, population)
-- Standard scaling for regression-based models
-- One-hot encoding for categorical variables
-
-## Statistical Analysis
-- Correlation analysis (Pearson & Spearman)
-- Linear regression for continuous relationships
-- Hypothesis testing for group comparisons
-- Variance inflation factor (VIF) for multicollinearity checks
-
-## Predictive Modeling
-- Baseline linear regression
-- Regularized models (Ridge / Lasso)
-- Train-test split with cross-validation
-- Evaluation using RMSE and R²
-
-## Interpretation Focus
-- Emphasis on explainability over pure prediction accuracy
-- Results interpreted in public-health and policy context
-
-# Data Preprocessing Planning
-
-This section defines the concrete preprocessing decisions that will guide all downstream analysis and modeling. The goal is to create a clean, consistent country–year panel dataset while minimizing bias introduced by missing data, scale differences, and schema mismatches.
+This document describes the **planned** methodology for the Life Expectancy Analysis project.  
+Sections will be updated with **final thresholds, dropped columns, and results** once Week 2 (cleaning/merge) and Week 3 (EDA/correlation) outputs are generated.
 
 ---
 
-### Missing Value Patterns & Handling Strategy
+## Overview
 
-#### Diagnostics to Compute
-In the cleaning notebook / script, compute:
+The project builds a country–year panel dataset by combining:
+- **WHO** life expectancy + health indicators (`data/raw/world_health_organization/who.csv`)
+- **World Bank panel** socio-economic indicators (`data/raw/world_bank/wb.csv`)
+- (Optional extension) **World Bank WDI export** (`data/raw/world_bank/wdi.csv`) for validation and additional features
 
-- **% missing per column**
-- **% missing per country**
-- **% missing per year**
-- (Optional) **Missingness heatmap** to visualize structure and clustering
+The workflow is:
 
-These diagnostics will be saved as tables/figures and referenced in the report.
-
-#### Predefined Decisions
-- **Feature-level filtering**  
-  - Drop features with **> 40–60% missingness** (threshold finalized after inspection).
-- **Country-level filtering**  
-  - Drop countries with **fewer than 5 observed years** of life expectancy.
-- **Time-series gaps**
-  - Interpolation allowed **only** when:
-    - Gaps are short (1–2 years)
-    - Indicator is slow-moving (e.g., life expectancy, education)
-  - Otherwise:
-    - Use grouped imputation (e.g., region/income group medians)
-    - Or model-based imputation if justified
-- **Target variable**
-  - Rows with missing **life expectancy** are always dropped.
-
-All imputation decisions will be explicitly documented and justified.
+1. Data understanding + schema confirmation (Week 1)  
+2. Cleaning, harmonization, merge, and feature engineering (Week 2)  
+3. Advanced EDA, comparative analysis, and correlation study (Week 3)  
+4. Modeling, insights, reporting, and presentation (Week 4+)
 
 ---
 
-### Categorical vs Numerical Variables
+## Data Preprocessing Plan (Week 2)
 
-#### Categorical Variables
-- Country
-- Region / income group (World Bank)
-- Year  
-  - Treated as numeric for trends
-  - Treated as categorical for fixed-effects models
+### 1) Standardization and Schema Alignment
+**Goal:** ensure both datasets share consistent merge keys and interpretable column names.
 
-#### Numerical Variables
-- **Target**
-  - Life expectancy at birth
-- **Health**
-  - Immunization rates
-  - Mortality rates
-  - Health expenditure
-- **Economic**
-  - GDP per capita
-  - Poverty / unemployment proxies
-- **Social & Infrastructure**
-  - Sanitation access
-  - Clean water access
-- **Education & Demographics**
-  - Schooling years
-  - Fertility rate
-  - Population growth
+Planned actions:
+- Standardize column names to snake_case.
+- Trim whitespace in raw WHO column headers (e.g., `Life expectancy ` → `life_expectancy`).
+- Standardize country naming rules (strip whitespace, normalize punctuation/casing).
+- Normalize `year` to integer and remove invalid/non-numeric years with explicit logging.
 
-This separation is fixed early to avoid leakage and inconsistent transformations.
+Artifacts:
+- `data/external/country_name_map.csv` (manual mapping for country name mismatches)
+- Notebook logs + summary tables in `docs/tables/`
 
 ---
 
-### Normalization & Scaling Plan
+### 2) Uniqueness and Duplicate Handling
+**Goal:** enforce one row per `(country, year)`.
 
-#### Transformations
-- **Log transforms** for heavy-tailed variables:
-  - GDP per capita
-  - Health expenditure
-  - Population-related measures
-- Add small constants where needed to handle zeros.
+Checks:
+- WHO: validate uniqueness on `(Country, Year)` and inspect duplicates.
+- WB panel: validate uniqueness on `(Country Name, Year)`.
 
-#### Standardization (for modeling)
-For numerical predictors used in regression / ML models:
+Decision rule (to finalize after inspection):
+- If duplicates exist, choose one of:
+  - keep-first (if exact duplicates),
+  - aggregate (if duplicates differ only in a small subset of numeric fields),
+  - drop (if clearly corrupted / inconsistent).
+
+All decisions will be recorded with:
+- counts removed/aggregated
+- example rows
+- justification
+
+---
+
+### 3) Plausibility and Range Checks
+**Goal:** remove or correct values that are clearly invalid.
+
+Planned checks:
+- `life_expectancy`: flag values `<= 0` or `> 100` and decide drop vs clip.
+- Percentage-like indicators (e.g., immunization rates): enforce valid bounds where appropriate (often `[0, 100]`).
+- Mortality and expenditure fields: flag negative values and investigate.
+
+All corrections will be:
+- logged (how many values corrected, how many rows dropped)
+- justified (why this threshold/rule is reasonable)
+
+---
+
+## Missing Value Diagnostics and Handling (Week 2)
+
+### Diagnostics to Compute
+To understand missingness structure before any imputation:
+- % missing per column
+- % missing per year (at least for target + key predictors)
+- % missing per country (at least for target)
+- Optional missingness heatmap (diagnostic only)
+
+Artifacts:
+- tables exported to `docs/tables/`
+- optional figure(s) exported to `reports/figures/`
+
+### Predefined Handling Rules (Subject to Final Threshold Selection)
+**Target variable**
+- Rows with missing `life_expectancy` are always dropped.
+
+**Feature-level filtering**
+- Drop features above a missingness threshold in the **40–60% band**.
+- Final cutoff will be chosen after inspecting:
+  - importance of the feature group
+  - whether missingness is concentrated in specific periods/regions
+  - merge-induced missingness post-join
+
+**Country-level filtering**
+- Drop countries with fewer than **5 observed years** of `life_expectancy` (minimum coverage rule).
+
+**Imputation**
+- Numeric predictors with moderate missingness: median imputation (global median) as baseline.
+- Optional grouped imputation:
+  - region median
+  - income group median  
+  applied only when group labels exist and the variable is suitable.
+- No blanket interpolation; see time-series rules below.
+
+---
+
+## Time-Series Gaps and Interpolation Policy (Week 2)
+
+Not all variables should be interpolated.
+
+**Interpolation allowed only when**
+- gaps are short (1–2 years)
+- indicator is slow-moving (e.g., life expectancy, schooling)
+
+**Interpolation not allowed by default**
+- variables prone to shocks/spikes (e.g., mortality-related indicators)
+
+If interpolation is applied:
+- record which columns were interpolated
+- record how many values were filled
+- keep traceability (before/after counts)
+
+---
+
+## Feature Transformations and Scaling (Week 2–3)
+
+### Transformations
+Some variables are expected to be heavy-tailed (e.g., GDP-like measures, population).  
+Planned options:
+- log transforms for heavy-tailed predictors  
+  `x_log = log(x + c)` with small constant `c` if zeros exist.
+- keep both original and transformed versions for interpretability.
+
+### Scaling (Modeling Stage)
+Scaling is applied **after** train/test split.
+
+For predictor columns used in regression / ML models:
 
 $$
 x' = \frac{x - \mu}{\sigma}
 $$
 
-- Applied **after train/test split**
-- Parameters ($\mu, \sigma$) learned on training data only
-
-#### Interpretability Rule
-- Keep **original-scale variables** alongside transformed versions
-- Use original scale for:
-  - Summary tables
-  - Interpretation
-  - Final reporting
+Rules:
+- Fit scalers on training data only.
+- Apply the same transform to validation/test data.
 
 ---
 
-### Dataset Merge Strategy
+## Merge Strategy (Week 2)
 
-#### Target Structure
-A clean **panel dataset** with:
+### Target Structure
+A clean country–year panel with:
+- **Key:** `(country, year)`
+- one row per country–year
 
-- **Key:** (country, year)
-- One row per country–year
+### Join Logic
+- Base merge: WHO cleaned ↔ WB panel cleaned on `(country, year)`
+- Start with **inner join** for initial modeling reliability.
+- Measure and report coverage loss:
+  - rows lost vs WHO
+  - rows lost vs WB
+  - which countries/years are lost due to mismatches
 
-#### Join Logic
-- Merge **WHO ↔ World Bank** on (country, year)
+Artifacts:
+- `docs/tables/merge_coverage_loss.csv`
 
-#### Known Issues & Solutions
-- **Country name mismatches**
-  - Create explicit mapping file:
-    ```
-    data/external/country_name_map.csv
-    ```
-- **ISO vs name mismatch**
-  - Prefer converting all datasets to **ISO3 country codes**
-- **Join type**
-  - Start with **inner join** to guarantee complete cases for modeling
-  - Measure and report:
-    - Number of rows lost
-    - Countries/years dropped due to mismatches
-
-Coverage loss statistics will be reported transparently.
+### Country Name Harmonization
+Planned approach:
+- mapping file: `data/external/country_name_map.csv`
+- if mapping remains large, evaluate ISO3 alignment using WB `Country Code` as stable identifier
 
 ---
 
-### Target Variable & Predictor Grouping
+## Exploratory Data Analysis Plan (Week 3)
 
-#### Target Variable
-- `life_expectancy` (WHO)
+EDA is used to:
+- validate distributions and coverage
+- identify anomalies/outliers
+- motivate modeling choices
+- structure reporting around interpretable feature groups
 
-#### Predictor Groups
-These groups will be used consistently across:
-EDA → inferential testing → modeling → reporting
+### 1) Target Variable: Life Expectancy
+Key questions:
+- What is the global distribution of life expectancy?
+- How does global life expectancy change over time?
+- How does life expectancy differ by region/income group?
 
-**Health System & Immunization**
-- DPT, measles, polio immunization rates
-- Health expenditure indicators
+Planned plots:
+- histogram/density of life expectancy
+- global mean/median life expectancy over time
+- boxplots by region/income group
+- variability over time (variance or IQR by year)
 
-**Mortality & Disease Burden**
-- Infant mortality
-- Under-5 mortality
-- Adult mortality
-- HIV / TB indicators (if available)
+### 2) Health System and Immunization
+Planned focus:
+- association between immunization coverage and life expectancy
+- coverage and missingness patterns by country/year
 
-**Economic**
-- GDP per capita
-- Poverty and employment proxies
+Planned plots:
+- scatter: immunization vs life expectancy
+- time trends (global + by region)
+- missingness tables for key health variables
 
-**Social & Infrastructure**
-- Sanitation access
-- Clean water access
+### 3) Mortality and Disease Burden
+Planned focus:
+- inverse relationships with life expectancy
+- nonlinear effects and outliers
 
-**Education & Demographics**
-- Schooling years
-- Fertility rate
-- Population growth
+Planned plots:
+- scatter (possibly log-scale): mortality vs life expectancy
+- correlation heatmap for mortality-related indicators
+- example country trajectories for mortality + life expectancy
 
-This grouping directly informs:
-- EDA section structure
-- Regression blocks
-- Feature importance analysis
-- Final interpretation
+### 4) Economic Indicators
+Planned focus:
+- diminishing returns of income on life expectancy
+- differences across income groups
 
-# Exploratory Data Analysis (EDA)
+Planned plots:
+- life expectancy vs log(GDP-related) predictors
+- time trends by income group
 
-This section explores the structure, distributions, and relationships in the data prior to formal statistical testing or modeling. The goal of EDA is to understand patterns, identify anomalies, and motivate subsequent inferential analysis.
+### 5) Social and Infrastructure
+Planned focus:
+- threshold effects 
+- bias from uneven coverage
 
----
+Planned plots:
+- life expectancy vs sanitation
+- regional comparisons
 
-## 1. Target Variable: Life Expectancy
+### 6) Education and Demographics
+Planned focus:
+- structural demographic relationships
+- long-run transitions
 
-### Key Questions
-- How is life expectancy distributed across countries?
-- How has life expectancy evolved over time?
-- Do life expectancy levels differ systematically by region or income group?
+Planned plots:
+- scatter with smoothing (e.g., LOWESS) where appropriate
+- time series by region/income group
 
-### Plots
-- Histogram / density plot of life expectancy
-- Line plot of life expectancy over time
-- Boxplot of life expectancy by region or income group
-
----
-
-## 2. Health System & Immunization
-
-### Variables
-- Immunization rates (DPT, measles, polio)
-- Health expenditure indicators
-
-### EDA Focus
-- Correlation between immunization coverage and life expectancy
-- Relationship between health system investment and outcomes
-- Missingness patterns across countries and years
-
-### Plots
-- Scatter plots: immunization rate vs life expectancy
-- Time trends of immunization coverage
-- Faceted plots by income group
-
----
-
-## 3. Mortality & Disease Burden
-
-### Variables
-- Infant mortality
-- Under-5 mortality
-- Adult mortality
-- HIV/TB indicators (if available)
-
-### EDA Focus
-- Inverse relationships with life expectancy
-- Nonlinear effects and diminishing returns
-- Identification of outliers and extreme cases
-
-### Plots
-- Log-scale scatter plots
-- Correlation heatmap of mortality indicators
-- Country-level life expectancy and mortality trajectories
+### 7) Multivariate Structure (Optional)
+Planned tools:
+- correlation matrix (Pearson + Spearman)
+- multicollinearity checks (VIF) on selected predictor subset
+- PCA as descriptive structure (not required for final modeling)
 
 ---
 
-## 4. Economic Indicators
+## Correlation and Statistical Analysis Plan (Week 3)
 
-### Variables
-- GDP per capita
-- Poverty proxy indicators
+Planned steps:
+- compute Pearson and Spearman correlations with `life_expectancy`
+- rank predictors by absolute correlation strength
+- check stability across:
+  - years (e.g., decade slices)
+  - regions/income groups
+- investigate multicollinearity among top predictors (VIF + correlation clustering)
 
-### EDA Focus
-- Diminishing returns of income on life expectancy
-- Cross-country and cross-income inequality
-
-### Plots
-- Log(GDP per capita) vs life expectancy
-- Stratification by income group
-- Economic trends over time
-
----
-
-## 5. Social & Infrastructure
-
-### Variables
-- Sanitation access
-- Clean water access
-
-### EDA Focus
-- Threshold effects in infrastructure coverage
-- Bias introduced by missing or uneven data coverage
-
-### Plots
-- Life expectancy vs sanitation / water access
-- Regional comparisons
+Artifacts:
+- `docs/tables/top_correlated_features.csv`
+- correlation heatmap figure(s) in `reports/figures/`
 
 ---
 
-## 6. Education & Demographics
+## Predictive Modeling Plan (Week 4+)
 
-### Variables
-- Mean years of schooling
-- Fertility rate
-- Population growth
+Baseline models:
+- linear regression (baseline)
+- Ridge / Lasso (regularized)
 
-### EDA Focus
-- Structural demographic relationships
-- Long-term trends and transitions
+Modeling rules:
+- train/test split or time-aware split (to decide based on panel structure)
+- cross-validation where appropriate
+- evaluate with:
+  - RMSE
+  - R²
 
-### Plots
-- Scatter plots with LOWESS smoothing
-- Time series by region or income group
+Interpretability focus:
+- keep a strong emphasis on explainability
+- interpret results with public health / policy relevance
+- report limitations (missingness, coverage bias, indicator definitions)
 
 ---
-
-## 7. Multivariate Structure (Optional)
-
-### EDA Tools
-- Correlation matrix of predictors and target
-- Principal Component Analysis (PCA) for structural intuition (not modeling)
-
-

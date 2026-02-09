@@ -1,120 +1,290 @@
 # Life Expectancy Analysis
 
 ## Project Objective
-The goal of this project is to **identify, explain, and quantify the key factors that drive life expectancy across countries**.  
-We combine **descriptive analysis**, **statistical inference**, and **predictive modeling** to understand how health, economic, and social variables relate to life expectancy outcomes.
+The goal of this project is to **identify, explain, and quantify the key factors that drive life expectancy across countries**.
 
-The project focuses on both:
-- **Explanation**: Which factors are most strongly associated with life expectancy, and how?
-- **Prediction**: How accurately can life expectancy be predicted using available indicators?
+We construct a longitudinal country–year dataset by combining health indicators from the World Health Organization (WHO) with socio-economic indicators from the World Bank. The project integrates:
+
+- descriptive statistics
+- exploratory data analysis (EDA)
+- statistical inference
+- predictive modeling
+
+The project addresses two complementary questions:
+
+**Explanation**
+- Which factors are most strongly associated with life expectancy?
+- How do health, economic, and social indicators interact?
+
+**Prediction**
+- How accurately can life expectancy be estimated from available indicators?
+- Which variables contribute most to predictive performance?
 
 ---
 
 ## Data Sources
-This project integrates data from two authoritative global sources:
 
-- **World Health Organization (WHO)**  
-  Health indicators such as mortality rates, immunization coverage, disease prevalence, and life expectancy.
-  - https://www.who.int/data
+The analysis combines two international public datasets.
 
-- **World Bank**  
-  Economic and social indicators such as GDP, education, population, and health expenditure.
-  - https://data.worldbank.org
+### 1) World Health Organization (WHO)
+Contains health and demographic indicators.
+
+Examples of variables:
+- life expectancy at birth (target variable)
+- adult mortality
+- infant deaths
+- immunization coverage
+- disease indicators (e.g., HIV/AIDS)
+- schooling
+- BMI
+
+File location: data/raw/world_health_organization/who.csv
+
+
+Schema characteristics:
+- One row per `(Country, Year)`
+- Health-focused variables
+- Main source of the **target variable**
 
 ---
 
-## Repository Structure
+### 2) World Bank Socio-Economic Panel
+Contains economic and infrastructure indicators.
 
+Examples of variables:
+- sanitation access
+- unemployment
+- education expenditure
+- CO₂ emissions
+- undernourishment
+- health expenditure
+- income group and region
+
+File location: data/raw/world_bank/wb.csv
+
+
+Schema characteristics:
+- One row per `(Country Name, Year)`
+- Socio-economic predictors
+
+---
+
+### Validation 
+World Bank WDI export: data/raw/world_bank/wdi.csv
+
+---
+
+## Project Structure
+
+```text
 life-expectancy-analysis/
+│
 ├── data/
-│ ├── raw/ # Original WHO & World Bank datasets
-│ ├── processed/ # Cleaned and merged datasets
+│ ├── raw/
+│ │ ├── world_health_organization/
+│ │ │ └── who.csv
+│ │ └── world_bank/
+│ │ ├── wb.csv
+│ │ ├── metadata_country.csv
+│ │ ├── metadata_indicator.csv
+│ │ └── wdi.csv
+│ │
+│ ├── interim/ # intermediate cleaned tables
+│ └── processed/ # final merged analytical dataset
 │
 ├── notebooks/
-│ ├── 01_exploration.ipynb
-│ ├── 02_cleaning.ipynb
-│ ├── 03_analysis.ipynb
+│ ├── 01_data_understanding.ipynb
+│ ├── 02_cleaning_and_merge.ipynb
+│ └── 03_eda_and_analysis.ipynb
 │
 ├── src/
-│ ├── ingestion.py
-│ ├── preprocessing.py
-│ ├── modeling.py
+│ ├── clean/
+│ │ ├── inspect_missingness.py
+│ │ ├── filter_entities.py
+│ │ ├── impute.py
+│ │ ├── merge.py
+│ │ └── scale_features.py
+│ │
+│ └── utils/
+│ └── config.py
 │
 ├── docs/
 │ ├── data_dictionary.md
-│ ├── methodology.md
+│ └── methodology.md
+│
+├── reports/
+│ ├── figures/
+│ └── tables/
 │
 ├── requirements.txt
-├── README.md
-└── .gitignore
+└── README.md
+```
 
 ---
 
 ## Setup Instructions
 
-### 1. Create and activate virtual environment
+### 1. Create virtual environment
+From the project root:
+
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv life_expectancy_env
+source life_expectancy_env/bin/activate
+```
+
+Verify the environment is active:
+
+```bash
+which python
+```
+
+It should point inside:
+
+```
+life-expectancy-analysis/life_expectancy_env/bin/python
 ```
 
 ### 2. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
-## How to Run the Analysis Pipeline
+---
 
-The project follows a modular and reproducible analysis pipeline.
+## Workflow
 
-### 1. Data Ingestion
-- Load raw WHO and World Bank datasets into `data/raw/`.
+The project follows a staged analysis pipeline.
 
-### 2. Data Cleaning & Preprocessing
-- Handle missing values
-- Normalize numerical variables
-- Encode categorical variables
+### Step 1 — Data Understanding 
 
-### 3. Dataset Merging
-- Merge datasets using **country** and **year** as primary keys.
+Goals:
 
-### 4. Analysis & Modeling
-- Exploratory Data Analysis (EDA)
-- Statistical inference and hypothesis testing
-- Predictive modeling
+* understand dataset schemas
+* inspect variable meanings
+* check coverage (countries, years)
+* identify merge keys
 
-Execution is primarily performed through the notebooks in the following order:
-01_exploration → 02_cleaning → 03_analysis
+Outputs:
 
+* dataset summaries
+* variable descriptions
+* missingness overview
+
+Notebook:
+
+```
+notebooks/01_data_understanding.ipynb
+```
+
+### Step 2 — Cleaning and Merge 
+
+Tasks:
+
+* standardize country names
+* harmonize year format
+* detect duplicates
+* handle missing values
+* merge WHO and World Bank datasets
+
+Output:
+
+```
+data/processed/panel_dataset.csv
+```
+
+Notebook:
+
+```
+notebooks/02_cleaning_and_merge.ipynb
+```
+
+### Step 3 — Exploratory Data Analysis
+
+Tasks:
+
+* distributions of life expectancy
+* correlations with predictors
+* regional comparisons
+* time trends
+
+Notebook:
+
+```
+notebooks/03_eda_and_analysis.ipynb
+```
+
+### Step 4 — Modeling & Insights 
+Tasks:
+
+* regression modeling
+* feature importance
+* interpretation in policy context
+* report preparation
+
+---
+
+## Key Merge Definition
+
+The merged dataset is a **panel dataset** with:
+
+**Primary key**
+
+```
+(country, year)
+```
+
+Each row represents:
+
+> one country in one year with health and socio-economic indicators.
 
 ---
 
 ## Outputs
-- Cleaned and merged analytical dataset
-- Exploratory visualizations
-- Statistical inference results (correlations, regressions, hypothesis tests)
-- Predictive model performance metrics
-- (Optional) Interactive dashboard
+
+The project will produce:
+
+* cleaned merged dataset
+* summary statistics tables
+* visualizations
+* correlation analysis
+* regression results
+* final written report
+
+Outputs saved in:
+
+```
+data/processed/
+reports/figures/
+reports/tables/
+```
 
 ---
 
 ## Project Roadmap
 
-### Week 1 — Domain Understanding & Data Collection
-- Research key determinants of life expectancy
-- Identify and collect WHO and World Bank datasets
+### Week 1 — Domain Understanding
 
-### Week 2 — Data Cleaning & Feature Engineering
-- Handle missing data and inconsistencies
-- Normalize and transform features
-- Merge datasets into a unified analytical table
+* inspect datasets
+* confirm schema
+* verify merge compatibility
 
-### Week 3 — Analysis & Modeling
-- Descriptive and comparative analysis
-- Correlation and regression analysis
-- Predictive modeling
+### Week 2 — Cleaning & Feature Engineering
 
-### Week 4 — Insights & Reporting
-- Interpret results and derive insights
-- Prepare final report and presentation
-- (Optional) Dashboard development
+* handle missing values
+* standardize entities
+* build merged panel dataset
+
+### Week 3 — Analysis
+
+* EDA
+* correlations
+* comparative analysis
+
+### Week 4 — Interpretation & Reporting
+
+* modeling
+* insights
+* final report and presentation
+
+

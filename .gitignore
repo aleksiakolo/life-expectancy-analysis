@@ -1,7 +1,12 @@
-# env
-.venv/
+# virtual environments
+life_expectancy_env/
+_OLD_life-expectancy-venv/
+
+# python cache
 __pycache__/
 *.pyc
+
+# jupyter
 .ipynb_checkpoints/
 
 # OS
