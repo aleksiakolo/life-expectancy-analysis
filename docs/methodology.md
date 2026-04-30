@@ -1,6 +1,6 @@
 # Methodology
 
-This document describes the **planned** methodology for the Life Expectancy Analysis project.  
+This document describes the **planned** methodology for the Life Expectancy Analysis project.
 Sections will be updated with **final thresholds, dropped columns, and results** once Week 2 (cleaning/merge) and Week 3 (EDA/correlation) outputs are generated.
 
 ---
@@ -14,14 +14,14 @@ The project builds a country–year panel dataset by combining:
 
 The workflow is:
 
-1. Data understanding + schema confirmation (Week 1)  
-2. Cleaning, harmonization, merge, and feature engineering (Week 2)  
-3. Advanced EDA, comparative analysis, and correlation study (Week 3)  
+1. Data understanding + schema confirmation (Week 1)
+2. Cleaning, harmonization, merge, and feature engineering (Week 2)
+3. Advanced EDA, comparative analysis, and correlation study (Week 3)
 4. Modeling, insights, reporting, and presentation (Week 4+)
 
 ---
 
-## Data Preprocessing Plan (Week 2)
+## Data Preprocessing Plan
 
 ### 1) Standardization and Schema Alignment
 **Goal:** ensure both datasets share consistent merge keys and interpretable column names.
@@ -72,7 +72,7 @@ All corrections will be:
 
 ---
 
-## Missing Value Diagnostics and Handling (Week 2)
+## Missing Value Diagnostics and Handling
 
 ### Diagnostics to Compute
 To understand missingness structure before any imputation:
@@ -103,13 +103,13 @@ Artifacts:
 - Numeric predictors with moderate missingness: median imputation (global median) as baseline.
 - Optional grouped imputation:
   - region median
-  - income group median  
+  - income group median
   applied only when group labels exist and the variable is suitable.
 - No blanket interpolation; see time-series rules below.
 
 ---
 
-## Time-Series Gaps and Interpolation Policy (Week 2)
+## Time-Series Gaps and Interpolation Policy
 
 Not all variables should be interpolated.
 
@@ -127,12 +127,12 @@ If interpolation is applied:
 
 ---
 
-## Feature Transformations and Scaling (Week 2–3)
+## Feature Transformations and Scaling
 
 ### Transformations
-Some variables are expected to be heavy-tailed (e.g., GDP-like measures, population).  
+Some variables are expected to be heavy-tailed (e.g., GDP-like measures, population).
 Planned options:
-- log transforms for heavy-tailed predictors  
+- log transforms for heavy-tailed predictors
   `x_log = log(x + c)` with small constant `c` if zeros exist.
 - keep both original and transformed versions for interpretability.
 
@@ -151,7 +151,7 @@ Rules:
 
 ---
 
-## Merge Strategy (Week 2)
+## Merge Strategy
 
 ### Target Structure
 A clean country–year panel with:
@@ -176,7 +176,7 @@ Planned approach:
 
 ---
 
-## Exploratory Data Analysis Plan (Week 3)
+## Exploratory Data Analysis Plan
 
 EDA is used to:
 - validate distributions and coverage
@@ -227,7 +227,7 @@ Planned plots:
 
 ### 5) Social and Infrastructure
 Planned focus:
-- threshold effects 
+- threshold effects
 - bias from uneven coverage
 
 Planned plots:
@@ -243,7 +243,7 @@ Planned plots:
 - scatter with smoothing (e.g., LOWESS) where appropriate
 - time series by region/income group
 
-### 7) Multivariate Structure (Optional)
+### 7) Multivariate Structure
 Planned tools:
 - correlation matrix (Pearson + Spearman)
 - multicollinearity checks (VIF) on selected predictor subset
@@ -251,7 +251,7 @@ Planned tools:
 
 ---
 
-## Correlation and Statistical Analysis Plan (Week 3)
+## Correlation and Statistical Analysis Plan
 
 Planned steps:
 - compute Pearson and Spearman correlations with `life_expectancy`
@@ -267,7 +267,7 @@ Artifacts:
 
 ---
 
-## Predictive Modeling Plan (Week 4+)
+## Predictive Modeling Plan
 
 Baseline models:
 - linear regression (baseline)

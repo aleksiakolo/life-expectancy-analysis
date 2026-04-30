@@ -69,7 +69,7 @@ Schema characteristics:
 
 ---
 
-### Validation 
+### Validation
 World Bank WDI export: data/raw/world_bank/wdi.csv
 
 ---
@@ -156,7 +156,7 @@ pip install -r requirements.txt
 
 The project follows a staged analysis pipeline.
 
-### Step 1 — Data Understanding 
+### Step 1 — Data Understanding
 
 Goals:
 
@@ -177,7 +177,7 @@ Notebook:
 notebooks/01_data_understanding.ipynb
 ```
 
-### Step 2 — Cleaning and Merge 
+### Step 2 — Cleaning and Merge
 
 Tasks:
 
@@ -214,7 +214,7 @@ Notebook:
 notebooks/03_eda_and_analysis.ipynb
 ```
 
-### Step 4 — Modeling & Insights 
+### Step 4 — Modeling & Insights
 Tasks:
 
 * regression modeling
@@ -286,5 +286,3 @@ reports/tables/
 * modeling
 * insights
 * final report and presentation
-
-

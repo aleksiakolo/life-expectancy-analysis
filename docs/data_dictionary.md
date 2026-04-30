@@ -10,7 +10,7 @@ This data dictionary describes the **raw datasets** used in the Life Expectancy 
 
 ---
 
-## 1) Canonical Merge Keys 
+## 1) Canonical Merge Keys
 
 The project will build a merged country–year panel using:
 
@@ -23,8 +23,8 @@ These keys are present in both WHO and WB panel datasets (with different column 
 
 ## 2) WHO Dataset (Raw) — `who.csv`
 
-### Raw Columns 
-The WHO dataset contains one row per **Country–Year** with health and socio-economic indicators.  
+### Raw Columns
+The WHO dataset contains one row per **Country–Year** with health and socio-economic indicators.
 Key fields include:
 
 - `Country` (string)
@@ -50,7 +50,7 @@ Key fields include:
 - `Income composition of resources` (numerical)
 - `Schooling` (numerical)
 
-### Planned Standardization 
+### Planned Standardization
 - Trim whitespace in column names (e.g., `Life expectancy ` → `life_expectancy`)
 - Standardize `Country` naming to match WB (mapping file)
 - Ensure `Year` is integer and unique per (Country, Year)
@@ -59,7 +59,7 @@ Key fields include:
 
 ## 3) World Bank Dataset (Panel, Raw) — `wb.csv`
 
-### Raw Columns 
+### Raw Columns
 This WB dataset is already in **country–year panel format** and includes socio-economic predictors.
 
 - `Country Name` (string)
@@ -105,14 +105,14 @@ This dataset is **optional** and can be used to:
 - validate values against official WDI indicators
 - add additional predictors not present in `wb.csv`
 
-### Planned Processing 
+### Planned Processing
 - Reshape wide → long with columns: (country, year, indicator_code, value)
 - Filter to selected indicators
 - Pivot long → wide to create a country–year panel
 
 ---
 
-## 5) Merged Dataset Schema 
+## 5) Merged Dataset Schema
 
 The merged dataset is created by joining:
 
@@ -145,15 +145,3 @@ on:
 | `undernourishment_prev` | WB | Prevalence of undernourishment | numeric | raw typo needs standardization |
 
 **Note:** Additional WHO predictors (immunization rates, disease indicators) are included after cleaning and column standardization.
-
----
-
-## 6) Cross-Dataset Compatibility Notes (Week 1)
-
-- **Country naming mismatches are expected** between WHO and WB.
-  - Plan: create mapping file `data/external/country_name_map.csv` to harmonize names.
-  - Optional: use `Country Code` ISO3 for WB as a stable identifier if mapping is extensive.
-- **Time coverage differs** across datasets and will be assessed during missingness diagnostics.
-- **Units vary** across predictors; scaling/transformations will be applied only after train/test split during modeling.
-
----

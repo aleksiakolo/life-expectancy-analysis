@@ -1,30 +1,76 @@
-# virtual environments
-life_expectancy_env/
-_OLD_life-expectancy-venv/
-
-# python cache
+# ========================
+# Python
+# ========================
 __pycache__/
-*.pyc
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+*.pyo
+*.pyd
 
-# jupyter
+# ========================
+# Virtual environments
+# ========================
+life_exp/
+life_expectancy_analysis.egg-info/
+
+# ========================
+# Packaging
+# ========================
+*.egg-info/
+dist/
+build/
+
+# ========================
+# Jupyter
+# ========================
 .ipynb_checkpoints/
 
-# OS
-.DS_Store
+# ========================
+# VSCode / IDE
+# ========================
+.vscode/
+.idea/
 
-# data (keep structure, not files)
-data/raw/**
-data/interim/**
-data/processed/**
+# ========================
+# Logs & temp
+# ========================
+*.log
+*.tmp
+*.swp
+
+# ========================
+# Ruff / MyPy / Testing
+# ========================
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# ========================
+# Data (important)
+# ========================
+data/raw/*
+data/interim/*
+data/processed/*
+
+# keep folder structure
 !data/raw/.gitkeep
 !data/interim/.gitkeep
 !data/processed/.gitkeep
 
-# outputs
-outputs/**
-reports/figures/**
-reports/tables/**
-!reports/figures/.gitkeep
-!reports/tables/.gitkeep
-!outputs/models/.gitkeep
-!outputs/metrics/.gitkeep
+# ========================
+# Artifacts (outputs)
+# ========================
+artifacts/
+reports/
+models/
+
+# ========================
+# OS files
+# ========================
+.DS_Store
+
+# ========================
+# Docker
+# ========================
+*.tar

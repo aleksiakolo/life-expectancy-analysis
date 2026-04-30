@@ -1,0 +1,195 @@
+project:
+  root: .
+
+data:
+  raw_sources:
+    who:
+      name: who
+      path: data/raw/world_health_organization/who.csv
+      loader: csv
+      country_col: Country
+      year_col: Year
+      column_renames:
+        life_expectancy: life_expectancy_who
+
+    wb:
+      name: wb
+      path: data/raw/world_bank/wb.csv
+      loader: csv
+      country_col: Country Name
+      year_col: Year
+      column_renames:
+        incomegroup: income_group
+        life_expectancy_world_bank: life_expectancy_wb
+        prevelance_of_undernourishment: undernourishment
+        noncommunicable: noncommunicable_disease
+
+    wdi:
+      name: wdi
+      path: data/raw/world_bank/wdi.csv
+      loader: wdi
+      column_renames: {}
+
+  panel:
+    on: ["country", "year"]
+    how: "inner"            # or "outer" if you want full coverage
+    validate: "one_to_one"
+    suffixes: ["_who", "_wb"]
+    target:
+      source_cols:
+        - life_expectancy_who
+        - life_expectancy_wb
+      target_col: life_expectancy
+      strategy: mean
+
+imputation:
+  key: ["country", "year"]
+  target_col: life_expectancy
+
+  interpolate_cols:
+    - gdp
+    - health_expenditure_percent
+    - sanitation
+
+  interpolate_limit: 2
+  interpolate_method: linear
+
+  group_cols:
+    - region
+    - income_group
+
+  group_median_cols:
+    - education_expenditure_percent
+
+  median_impute_cols:
+    - unemployment
+    - corruption
+
+cleaning:
+  who:
+    key: [country, year]
+    target_col: life_expectancy_who
+    drop_missing_target: true
+    duplicate_policy: keep_first
+    min_years_per_country: 10
+    life_expectancy_bounds: [0.0, 100.0]
+    clip_life_expectancy: false
+    immunization_clip_0_100: true
+    negative_to_na_cols: []
+    feature_missingness_drop_threshold: 0.75
+
+  wb:
+    key: [country, year]
+    indicator_subset: null
+    winsorize_cols:
+      - gdp
+      - co2
+    winsorize_limits: [0.01, 0.99]
+    log_transform_cols:
+      - gdp
+    log_epsilon: 1.0e-9
+    feature_missingness_drop_threshold: 0.75
+
+wdi:
+  indicator_codes:
+    - SP.DYN.LE00.IN
+  indicator_code_col: indicator_code
+  country_col: country
+  country_code_col: country_code
+  value_name: value
+  year_min: 1950
+  year_max: null
+  wide_prefix: ""
+  drop_all_nan_rows: true
+
+
+features:
+  target_col: life_expectancy
+  year_col: year
+  status_col: status
+  status_flag_col: status_flag
+  leakage_cols:
+    - life_expectancy_who
+    - life_expectancy_wb
+  drop_id_cols:
+    - country_code
+  log_candidates:
+    - gdp
+    - population
+    - co2
+  missingness_flag_candidates:
+    - gdp
+    - schooling
+    - sanitation
+    - adult_mortality
+  interactions:
+    - [schooling, status_flag]
+    - [gdp_log1p, status_flag]
+  corr_threshold: 0.9
+  vif_threshold: 10.0
+  protected_features:
+    - year
+    - status_flag
+  manual_min_size: 5
+  manual_max_size: 10
+  manual_candidates:
+    - year
+    - adult_mortality
+    - schooling
+    - gdp_log1p
+    - sanitation
+    - hiv_aids
+    - income_composition_of_resources
+    - health_expenditure_percent
+    - under_five_deaths
+    - status_flag
+
+modeling:
+  split:
+    target_col: life_expectancy
+    year_col: year
+    strategy: time
+    test_size: 0.2
+    test_years: 3
+    seed: 42
+    dropna_target: true
+
+  pipeline:
+    numeric_cols: null
+    categorical_cols: null
+    numeric_impute_strategy: median
+    categorical_impute_strategy: most_frequent
+    scale_numeric: standard
+    add_numeric_missing_indicators: false
+
+  baselines:
+    ridge:
+      alphas: [0.1, 1.0, 10.0, 100.0, 1000.0]
+      cv: 5
+    lasso:
+      alphas: [0.1, 1.0, 10.0, 100.0, 1000.0]
+      cv: 5
+      random_state: 42
+      max_iter: 5000
+    elasticnet:
+      l1_ratio: [0.1, 0.25, 0.5, 0.75, 0.9]
+      cv: 5
+      random_state: 42
+      max_iter: 5000
+
+  neural:
+    hidden_layer_sizes: [256, 128]
+    max_iter: 800
+
+  registry:
+    random_state: 42
+    model_names:
+      - mean
+      - linear
+      - ridge
+      - lasso
+      - elasticnet
+      - hgb
+      - rf
+      - extra_trees
+      - mlp

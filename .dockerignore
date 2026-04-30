@@ -1,0 +1,15 @@
+.git
+.venv
+venv
+life_expectancy_env
+__pycache__
+*.pyc
+.ipynb_checkpoints
+.vscode
+
+data/raw
+data/interim
+data/processed
+artifacts
+notebooks
+docs
