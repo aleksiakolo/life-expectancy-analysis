@@ -239,7 +239,7 @@ def build_feature_sets_abc(
 
     model_df = prepare_numeric_model_frame(df, config)
     all_features = [col for col in model_df.columns if col != target_col]
-
+    all_features, constant_dropped = drop_constant_features(model_df, all_features)
     feature_set_a = list(all_features)
 
     feature_set_b, corr_dropped, corr_matrix = correlation_prune(
@@ -277,6 +277,7 @@ def build_feature_sets_abc(
         "vif_dropped": vif_dropped,
         "corr_matrix": corr_matrix.to_dict(),
         "final_vif_table": final_vif_table.to_dict(orient="records"),
+        "constant_dropped": constant_dropped,
     }
 
     return model_df, feature_sets, meta
@@ -309,3 +310,29 @@ def save_feature_sets_json(
         json.dump(payload, file, indent=2)
 
     return output_path
+
+
+def drop_constant_features(
+    df: pd.DataFrame,
+    features: list[str],
+) -> tuple[list[str], list[str]]:
+    """Remove features with zero or missing variance.
+
+    Args:
+        df: Input modeling DataFrame.
+        features: Candidate feature columns.
+
+    Returns:
+        Tuple containing kept features and dropped constant features.
+    """
+    kept = []
+    dropped = []
+
+    for feature in features:
+        values = pd.to_numeric(df[feature], errors="coerce")
+        if values.nunique(dropna=True) <= 1:
+            dropped.append(feature)
+        else:
+            kept.append(feature)
+
+    return kept, dropped
