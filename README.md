@@ -1,16 +1,24 @@
 # Life Expectancy Analysis
 
+A reproducible, end-to-end machine learning pipeline for analyzing global life expectancy using WHO, World Bank, and WDI data.
+The project supports data preprocessing, feature engineering, multiple model families, and experiment tracking through a unified CLI.
+
 ## Project Objective
-The goal of this project is to **identify, explain, and quantify the key factors that drive life expectancy across countries**.
+This project builds a **country–year panel dataset** and trains models to predict life expectancy.
 
-We construct a longitudinal country–year dataset by combining health indicators from the World Health Organization (WHO) with socio-economic indicators from the World Bank. The project integrates:
+It includes:
 
-- descriptive statistics
-- exploratory data analysis (EDA)
-- statistical inference
-- predictive modeling
+- Data pipeline (WHO + World Bank + WDI)
+- Feature engineering (A/B/C feature sets, lag features)
+- Time-aware train/validation/test splits
+- Multiple model families:
+  - Baselines (Ridge, Lasso, etc.)
+  - Tree models (Random Forest, Extra Trees, HistGBR)
+  - External boosting (XGBoost, LightGBM, CatBoost)
+  - WDI-based long-horizon models
+- CLI for reproducible experimentation
+- Docker support for environment reproducibility
 
-The project addresses two complementary questions:
 
 **Explanation**
 - Which factors are most strongly associated with life expectancy?
@@ -69,7 +77,7 @@ Schema characteristics:
 
 ---
 
-### Validation
+### Comparison
 World Bank WDI export: data/raw/world_bank/wdi.csv
 
 ---
@@ -77,212 +85,197 @@ World Bank WDI export: data/raw/world_bank/wdi.csv
 ## Project Structure
 
 ```text
-life-expectancy-analysis/
-│
-├── data/
-│ ├── raw/
-│ │ ├── world_health_organization/
-│ │ │ └── who.csv
-│ │ └── world_bank/
-│ │ ├── wb.csv
-│ │ ├── metadata_country.csv
-│ │ ├── metadata_indicator.csv
-│ │ └── wdi.csv
-│ │
-│ ├── interim/ # intermediate cleaned tables
-│ └── processed/ # final merged analytical dataset
-│
-├── notebooks/
-│ ├── 01_data_understanding.ipynb
-│ ├── 02_cleaning_and_merge.ipynb
-│ └── 03_eda_and_analysis.ipynb
-│
-├── src/
-│ ├── clean/
-│ │ ├── inspect_missingness.py
-│ │ ├── filter_entities.py
-│ │ ├── impute.py
-│ │ ├── merge.py
-│ │ └── scale_features.py
-│ │
-│ └── utils/
-│ └── config.py
-│
-├── docs/
-│ ├── data_dictionary.md
-│ └── methodology.md
-│
-├── reports/
-│ ├── figures/
-│ └── tables/
-│
-├── requirements.txt
-└── README.md
+life_expectancy/
+  cli.py                 # Main CLI entrypoint
+  data/                  # Data loading, cleaning, preprocessing
+  features/              # Feature engineering and selection
+  modeling/
+    model/               # Model definitions (baselines, tree, etc.)
+    experiments/         # Training + evaluation logic
+    registries.py        # Model registry
+    splits.py            # Time-based splits
+    train_eval.py        # Evaluation utilities
+````
+
+Other folders:
+
+```text
+configs/                 # YAML config files
+data/                    # Raw + processed data
+reports/tables/          # Output metrics and results
+reports/figures/         # Plots
+notebooks/               # Analysis notebooks
+tests/                   # Unit tests
 ```
 
 ---
 
-## Setup Instructions
+## Reproducibility
 
-### 1. Create virtual environment
-From the project root:
+This project is designed to be **fully reproducible**:
+
+### 1. Config-driven
+
+All experiments are controlled via:
+
+```text
+configs/default.yaml
+```
+
+This defines:
+
+* data sources
+* preprocessing logic
+* model configurations
+* splits (time-aware)
+
+---
+
+### 2. CLI-based pipeline
+
+All major steps can be run via CLI:
 
 ```bash
-python3 -m venv life_expectancy_env
-source life_expectancy_env/bin/activate
+lifeexp preprocess
+lifeexp features
+lifeexp train-baselines
+lifeexp train-advanced
+lifeexp train-boosting
+lifeexp train-wdi
+lifeexp all
 ```
 
-Verify the environment is active:
+The `all` command runs the full pipeline end-to-end.
+
+---
+
+### 3. Deterministic splits
+
+* Time-aware splitting (no leakage)
+* Fixed random seeds
+* Consistent feature generation
+
+---
+
+### 4. Docker support
+
+You can run the entire pipeline in a clean environment.
+
+#### Build image:
 
 ```bash
-which python
+docker build -t life-exp .
 ```
 
-It should point inside:
-
-```
-life-expectancy-analysis/life_expectancy_env/bin/python
-```
-
-### 2. Install dependencies
+#### Run CLI:
 
 ```bash
-pip install -r requirements.txt
+docker run --rm life-exp --help
+```
+
+#### Run full pipeline:
+
+```bash
+docker run --rm -v "$(pwd)":/app life-exp all
 ```
 
 ---
 
-## Workflow
+## Installation
 
-The project follows a staged analysis pipeline.
+### Local (editable install)
 
-### Step 1 — Data Understanding
-
-Goals:
-
-* understand dataset schemas
-* inspect variable meanings
-* check coverage (countries, years)
-* identify merge keys
-
-Outputs:
-
-* dataset summaries
-* variable descriptions
-* missingness overview
-
-Notebook:
-
+```bash
+pip install -e ".[dev]"
 ```
-notebooks/01_data_understanding.ipynb
-```
-
-### Step 2 — Cleaning and Merge
-
-Tasks:
-
-* standardize country names
-* harmonize year format
-* detect duplicates
-* handle missing values
-* merge WHO and World Bank datasets
-
-Output:
-
-```
-data/processed/panel_dataset.csv
-```
-
-Notebook:
-
-```
-notebooks/02_cleaning_and_merge.ipynb
-```
-
-### Step 3 — Exploratory Data Analysis
-
-Tasks:
-
-* distributions of life expectancy
-* correlations with predictors
-* regional comparisons
-* time trends
-
-Notebook:
-
-```
-notebooks/03_eda_and_analysis.ipynb
-```
-
-### Step 4 — Modeling & Insights
-Tasks:
-
-* regression modeling
-* feature importance
-* interpretation in policy context
-* report preparation
 
 ---
 
-## Key Merge Definition
+## Data Pipeline
 
-The merged dataset is a **panel dataset** with:
+1. Load raw data (WHO, World Bank, optional WDI)
+2. Standardize schemas
+3. Clean datasets
+4. Merge into panel (country, year)
+5. Add target (`life_expectancy`)
+6. Impute missing values
 
-**Primary key**
+---
 
-```
-(country, year)
-```
+## Modeling
 
-Each row represents:
+### Feature Sets
 
-> one country in one year with health and socio-economic indicators.
+* **A**: Minimal features
+* **B**: Core features
+* **C**: Full feature set
+
+---
+
+### Models
+
+#### Baselines
+
+* RidgeCV
+* LassoCV
+
+#### Tree Models
+
+* HistGradientBoosting
+* RandomForest
+* ExtraTrees
+
+#### External Boosting
+
+* XGBoost
+* LightGBM
+* CatBoost
+
+#### WDI Models
+
+* Long time horizon
+* Lag features
+* Panel-aligned evaluation
 
 ---
 
 ## Outputs
 
-The project will produce:
+Results are saved to:
 
-* cleaned merged dataset
-* summary statistics tables
-* visualizations
-* correlation analysis
-* regression results
-* final written report
-
-Outputs saved in:
-
-```
-data/processed/
-reports/figures/
+```text
 reports/tables/
+```
+
+Examples:
+
+* `baseline_results.csv`
+* `advanced_model_comparison.csv`
+* `external_boosting_compare.csv`
+* `wdi_panel_overlap_model_compare.csv`
+
+---
+
+## Testing
+
+```bash
+pytest
 ```
 
 ---
 
-## Project Roadmap
+## Notes
 
-### Week 1 — Domain Understanding
+* The pipeline uses **time-aware splits** to avoid leakage.
+* WDI models extend the dataset across a longer time horizon.
+* External boosting models are optional (installed via `[advanced]` dependencies).
+* Some warnings (e.g., LightGBM feature names) are expected and non-breaking.
 
-* inspect datasets
-* confirm schema
-* verify merge compatibility
+---
 
-### Week 2 — Cleaning & Feature Engineering
+## Future Improvements (optional)
 
-* handle missing values
-* standardize entities
-* build merged panel dataset
-
-### Week 3 — Analysis
-
-* EDA
-* correlations
-* comparative analysis
-
-### Week 4 — Interpretation & Reporting
-
-* modeling
-* insights
-* final report and presentation
+* Model artifact saving (pickle / joblib)
+* Experiment tracking (MLflow or lightweight logging)
+* Hyperparameter tuning automation
+* Additional sequence models (LSTM)

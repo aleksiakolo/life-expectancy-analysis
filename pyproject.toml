@@ -23,6 +23,9 @@ dependencies = [
     "statsmodels",
 ]
 
+[project.scripts]
+lifeexp = "life_expectancy.cli:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
@@ -45,11 +48,8 @@ sequence = [
 ]
 
 all = [
-    "life-expectancy-analysis[dev,advanced,sequence]"
+    "life-expectancy-analysis[dev,advanced,sequence]",
 ]
-
-[project.scripts]
-lifeexp = "life_expectancy.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -63,6 +63,8 @@ exclude = [
     ".git",
     ".venv",
     "venv",
+    "life_exp",
+    "life_exp312",
     "life_expectancy_env",
     "__pycache__",
     "data",
@@ -73,19 +75,19 @@ exclude = [
 
 [tool.ruff.lint]
 select = [
-    "E",    # pycodestyle errors
-    "F",    # pyflakes
-    "I",    # import sorting
-    "B",    # bugbear
-    "UP",   # modern Python syntax
-    "D",    # docstrings
-    "ANN",  # type annotations
+    "E",
+    "F",
+    "I",
+    "B",
+    "UP",
+    "D",
+    "ANN",
 ]
 ignore = [
-    "D100",    # missing docstring in public module
-    "D104",    # missing docstring in public package
-    "ANN101",  # missing type annotation for self
-    "ANN102",  # missing type annotation for cls
+    "D100",
+    "D104",
+    "ANN101",
+    "ANN102",
 ]
 
 [tool.ruff.lint.pydocstyle]

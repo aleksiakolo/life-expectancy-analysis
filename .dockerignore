@@ -1,15 +1,21 @@
 .git
 .venv
 venv
+.env
 life_expectancy_env
 __pycache__
 *.pyc
+*.pyo
+*.pyd
 .ipynb_checkpoints
 .vscode
+.git
+__pycache__
 
-data/raw
-data/interim
-data/processed
+
+data
+reports
+outputs
 artifacts
 notebooks
 docs
