@@ -151,6 +151,7 @@ modeling:
     strategy: time
     test_size: 0.2
     test_years: 3
+    val_years: 1
     seed: 42
     dropna_target: true
 
@@ -180,6 +181,57 @@ modeling:
   neural:
     hidden_layer_sizes: [256, 128]
     max_iter: 800
+
+  boosting:
+    xgb_sanity:
+      enabled: true
+      model_family: xgb
+      model_name: XGB_sanity
+      feature_set: B
+      scale_numeric: none
+      model_params:
+        n_estimators: 300
+        learning_rate: 0.05
+        max_depth: 4
+        subsample: 0.9
+        colsample_bytree: 0.9
+        reg_lambda: 1.0
+        random_state: 42
+        n_jobs: 1
+        tree_method: hist
+        verbosity: 0
+
+    lgbm_baseline:
+      enabled: true
+      model_family: lgbm
+      model_name: LightGBM_baseline
+      feature_set: B
+      scale_numeric: none
+      model_params:
+        n_estimators: 300
+        learning_rate: 0.05
+        num_leaves: 31
+        subsample: 0.9
+        colsample_bytree: 0.9
+        random_state: 42
+        n_jobs: 1
+        force_row_wise: true
+        verbose: -1
+
+    catboost_baseline:
+      enabled: true
+      model_family: catboost
+      model_name: CatBoost_baseline
+      feature_set: B
+      scale_numeric: none
+      model_params:
+        iterations: 300
+        learning_rate: 0.05
+        depth: 6
+        random_seed: 42
+        thread_count: 1
+        verbose: false
+        allow_writing_files: false
 
   registry:
     random_state: 42

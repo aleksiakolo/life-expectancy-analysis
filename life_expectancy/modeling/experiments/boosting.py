@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.pipeline import Pipeline
 
 from life_expectancy.modeling.experiments.core import append_run_log
-from life_expectancy.modeling.model.boosting import build_boosting_model
+from life_expectancy.modeling.models.boosting import build_boosting_model
 from life_expectancy.modeling.pipelines import build_preprocessor
 from life_expectancy.modeling.train_eval import regression_metrics
 

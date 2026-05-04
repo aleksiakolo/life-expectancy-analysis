@@ -7,7 +7,7 @@ from life_expectancy.modeling.experiments.boosting import (
     collect_experiment_columns,
     make_time_train_val_test,
 )
-from life_expectancy.modeling.model.boosting import get_xgb_trial_grid
+from life_expectancy.modeling.models.boosting import get_xgb_trial_grid
 
 
 def make_panel() -> pd.DataFrame:

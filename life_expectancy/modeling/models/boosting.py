@@ -19,14 +19,18 @@ def xgb_regressor(params: dict[str, Any] | None = None):
     """
     from xgboost import XGBRegressor
 
-    params = params or {}
+    default_params: dict[str, Any] = {
+        "objective": "reg:squarederror",
+        "tree_method": "hist",
+        "early_stopping_rounds": 50,
+        "n_jobs": 1,
+        "verbosity": 0,
+    }
 
-    return XGBRegressor(
-        objective="reg:squarederror",
-        tree_method="hist",
-        early_stopping_rounds=params.pop("early_stopping_rounds", 50),
-        **params,
-    )
+    if params:
+        default_params.update(params)
+
+    return XGBRegressor(**default_params)
 
 
 def lgbm_regressor(params: dict[str, Any] | None = None):
@@ -45,12 +49,14 @@ def lgbm_regressor(params: dict[str, Any] | None = None):
 
     default_params: dict[str, Any] = {
         "objective": "regression",
-        "n_estimators": 1500,
+        "n_estimators": 300,
         "learning_rate": 0.05,
         "num_leaves": 31,
         "subsample": 0.9,
         "colsample_bytree": 0.9,
         "random_state": 42,
+        "n_jobs": 1,
+        "force_row_wise": True,
         "verbose": -1,
     }
 
@@ -77,13 +83,15 @@ def catboost_regressor(params: dict[str, Any] | None = None):
     default_params: dict[str, Any] = {
         "loss_function": "RMSE",
         "eval_metric": "RMSE",
-        "iterations": 1500,
+        "iterations": 300,
         "learning_rate": 0.05,
         "depth": 6,
         "od_type": "Iter",
         "od_wait": 50,
         "random_seed": 42,
+        "thread_count": 1,
         "verbose": False,
+        "allow_writing_files": False,
     }
 
     if params:

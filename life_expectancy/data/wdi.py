@@ -112,6 +112,86 @@ def pivot_wdi(
     return panel, summary
 
 
+def attach_panel_metadata_to_wdi(
+    wdi_panel: pd.DataFrame,
+    panel: pd.DataFrame,
+    *,
+    year_col: str = "year",
+    join_key: str = "country",
+    metadata_cols: list[str] | None = None,
+    restrict_to_panel_countries: bool = True,
+) -> tuple[pd.DataFrame, Summary]:
+    """Attach panel metadata to WDI country-year rows.
+
+    Metadata is matched exactly for overlapping years. For earlier WDI years,
+    the first available panel metadata is used. For later WDI years, the last
+    available panel metadata is used.
+
+    Args:
+        wdi_panel: WDI country-year panel.
+        panel: Processed WHO/World Bank panel.
+        year_col: Year column name.
+        join_key: Country join key, usually `country` or `country_code`.
+        metadata_cols: Metadata columns to attach.
+        restrict_to_panel_countries: Whether to keep only countries present in panel.
+
+    Returns:
+        Tuple containing WDI panel with metadata and summary dictionary.
+
+    Raises:
+        KeyError: If required columns are missing.
+    """
+    if metadata_cols is None:
+        metadata_cols = ["region", "income_group", "status"]
+
+    require_columns(wdi_panel, [join_key, year_col], name="wdi_panel")
+    require_columns(panel, [join_key, year_col], name="panel")
+
+    available_metadata = [col for col in metadata_cols if col in panel.columns]
+
+    if not available_metadata:
+        raise KeyError(f"No metadata columns found in panel: {metadata_cols}")
+
+    panel_meta = (
+        panel[[join_key, year_col, *available_metadata]]
+        .dropna(subset=[join_key, year_col])
+        .copy()
+    )
+
+    panel_meta[year_col] = coerce_year_to_int(panel_meta[year_col])
+    panel_meta = panel_meta.sort_values([join_key, year_col])
+    panel_meta = panel_meta.drop_duplicates([join_key, year_col], keep="last")
+
+    out = wdi_panel.copy()
+    out[year_col] = coerce_year_to_int(out[year_col])
+
+    if restrict_to_panel_countries:
+        keys = set(panel_meta[join_key].dropna().unique())
+        out = out[out[join_key].isin(keys)].copy()
+
+    out = out.merge(
+        panel_meta,
+        on=[join_key, year_col],
+        how="left",
+    )
+
+    out = out.sort_values([join_key, year_col]).reset_index(drop=True)
+
+    out[available_metadata] = out.groupby(join_key, group_keys=False)[
+        available_metadata
+    ].apply(lambda group: group.ffill().bfill())
+
+    summary: Summary = {
+        "join_key": join_key,
+        "metadata_cols": available_metadata,
+        "restrict_to_panel_countries": restrict_to_panel_countries,
+        "output_rows": len(out),
+        "metadata_coverage": out[available_metadata].notna().mean().to_dict(),
+    }
+
+    return out, summary
+
+
 def wdi_to_long(
     df: pd.DataFrame,
     *,

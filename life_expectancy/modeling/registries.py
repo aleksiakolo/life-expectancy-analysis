@@ -4,15 +4,15 @@ from typing import Any
 
 from sklearn.base import RegressorMixin
 
-from life_expectancy.modeling.model.baselines import (
+from life_expectancy.modeling.models.baselines import (
     baseline_mean,
     elasticnet_cv,
     lasso_cv,
     linear_regression,
     ridge_cv,
 )
-from life_expectancy.modeling.model.neural import mlp_regressor
-from life_expectancy.modeling.model.tree import (
+from life_expectancy.modeling.models.neural import mlp_regressor
+from life_expectancy.modeling.models.tree import (
     extra_trees_regressor,
     hist_gradient_boosting_regressor,
     random_forest_regressor,

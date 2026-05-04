@@ -2,7 +2,7 @@ import pytest
 from sklearn.dummy import DummyRegressor
 from sklearn.linear_model import ElasticNetCV, LassoCV, LinearRegression, RidgeCV
 
-from life_expectancy.modeling.model.baselines import (
+from life_expectancy.modeling.models.baselines import (
     baseline_mean,
     elasticnet_cv,
     get_baseline_model,

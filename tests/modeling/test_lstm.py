@@ -1,6 +1,6 @@
 import torch
 
-from life_expectancy.modeling.model.lstm import LSTMRegressor, build_lstm_regressor
+from life_expectancy.modeling.models.lstm import LSTMRegressor, build_lstm_regressor
 
 
 def test_build_lstm_regressor() -> None:

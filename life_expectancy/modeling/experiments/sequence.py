@@ -10,7 +10,7 @@ import torch.nn as nn
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 
-from life_expectancy.modeling.model.lstm import build_lstm_regressor
+from life_expectancy.modeling.models.lstm import build_lstm_regressor
 from life_expectancy.modeling.train_eval import regression_metrics
 
 Summary = dict[str, Any]
