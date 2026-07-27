@@ -47,8 +47,13 @@ sequence = [
     "torch>=2.0",
 ]
 
+interpretability = [
+    "shap>=0.44",
+    "scikit-optimize>=0.10",
+]
+
 all = [
-    "life-expectancy-analysis[dev,advanced,sequence]",
+    "life-expectancy-analysis[dev,advanced,sequence,interpretability]",
 ]
 
 [tool.setuptools.packages.find]

@@ -1,420 +1,195 @@
-# Architecture Outline
+# Architecture
 
-## Purpose
+## Overview
 
-This document defines the **full target architecture** for the `life-expectancy-analysis` project.
-
-The goal is to transform the project into:
-
-- a **reproducible data science system**
-- a **proper Python package**
-- a **CLI-driven workflow**
-- a **clean separation of logic vs exploration**
-- a **production-quality, interview-ready codebase**
-
-This includes:
-- what exists today
-- what we are building now
-- what MUST be implemented to reach the final state
+`life-expectancy-analysis` is a reproducible data science pipeline for analysing global life expectancy drivers. It is structured as a proper Python package with a CLI-driven workflow and clean separation between pipeline logic and exploratory notebooks.
 
 ---
 
 ## 1. Package Structure
 
-### Target package name
-`life_expectancy_analysis`
-
-### Target structure (final)
+**Package name:** `life_expectancy`
 
 ```text
 life-expectancy-analysis/
 │
-├── src/
-│   └── life_expectancy_analysis/
-│       ├── data/
-│       ├── analysis/
-│       ├── modeling/
-│       ├── utils/
-│       ├── config/
-│       ├── cli/
-│       └── **init**.py
+├── life_expectancy/          # Main package
+│   ├── data/                 # Loading, cleaning, standardisation, imputation, panel merging
+│   ├── features/             # Feature engineering, selection, temporal (lag) features
+│   ├── modeling/             # Pipelines, train/eval, splits, registries
+│   │   ├── models/           # baseline, tree, boosting, lstm, neural
+│   │   └── experiments/      # core, boosting, sequence, wdi experiment runners
+│   ├── analysis/             # Diagnostics and error analysis
+│   └── cli.py                # CLI entrypoint (Typer)
 │
 ├── configs/
-│   ├── default.yaml
-│   ├── dev.yaml
-│   └── experiments/
+│   └── default.yaml          # All runtime parameters (data paths, model settings, seeds)
 │
-├── notebooks/
-├── tests/
+├── notebooks/                # Exploration, visualisation, reporting (00–12)
+├── tests/                    # Unit tests mirroring package structure
+├── data/
+│   ├── raw/                  # Source CSVs (WHO, World Bank, WDI) — gitignored
+│   ├── interim/              # Intermediate artifacts — gitignored
+│   └── processed/            # Final model-ready datasets — gitignored
 ├── docs/
-├── pyproject.toml
-└── README.md
+├── .github/workflows/ci.yml  # GitHub Actions: lint + test
+├── pyproject.toml            # Package metadata, deps, tool config
+├── Dockerfile
+└── Makefile
 ```
 
-### Current vs target
+---
 
-Current:
-- `src/` directly contains modules
+## 2. Packaging
 
-Target:
-- `src/life_expectancy_analysis/` becomes the real package
-
-### Required work
-- full package tree migration
-- update imports
-- ensure installability
+- **Build backend:** `setuptools` via `pyproject.toml`
+- **Install:** `pip install -e ".[dev,advanced,sequence]"`
+- **CLI entrypoint:** `lifeexp = "life_expectancy.cli:main"`
+- **Dependency groups:**
+  - `dev` — pytest, ruff, mypy, pre-commit, stubs
+  - `advanced` — XGBoost, LightGBM, CatBoost, statsmodels
+  - `sequence` — PyTorch (LSTM)
+  - `interpretability` — shap, scikit-optimize
 
 ---
 
-## 2. Packaging System
+## 3. CLI
 
-### Standard
-Use `pyproject.toml`
+**Binary:** `lifeexp`
 
-### Responsibilities
-- define metadata
-- define dependencies
-- register CLI entrypoint
-- support editable installs
+| Command | Description |
+|---|---|
+| `lifeexp info` | Show project/config information |
+| `lifeexp preprocess` | Clean raw data and build the panel |
+| `lifeexp features` | Build feature sets A/B/C from the panel |
+| `lifeexp train-baselines` | Train baseline models (mean, Ridge, Lasso, trees) |
+| `lifeexp train-advanced` | Train advanced sklearn models (HGB, RF, ExtraTrees, MLP) |
+| `lifeexp train-boosting` | Train boosting models (XGBoost, LightGBM, CatBoost) |
+| `lifeexp train-wdi` | Train lag models on the WDI feature set |
+| `lifeexp tune` | Bayesian hyperparameter search (scikit-optimize) for one model |
+| `lifeexp interpret` | SHAP + permutation feature importance for one model |
+| `lifeexp all` | Run the core reproducible end-to-end workflow |
 
-### Required improvements
-- remove oversized / unstructured `requirements.txt`
-- introduce dependency locking:
-  - `uv`, `poetry`, or `pip-tools`
-- ensure reproducible environments
-
----
-
-## 3. CLI System
-
-### CLI name
-`lifeexp`
-
-### Philosophy
-CLI = **thin orchestration layer**
-
-- no business logic
-- only calls into `src/`
-
-### Target commands
-
-```bash
-lifeexp data load
-lifeexp data merge
-lifeexp preprocess run
-lifeexp features build
-lifeexp model train
-lifeexp model evaluate
-lifeexp diagnostics run
-lifeexp pipeline run
-```
-
-### Responsibilities
-- parse arguments
-- load config
-- call functions from `src/`
-- log outputs
-
-### Required work
-- CLI skeleton
-- modular command structure
-- integration with config system
+All commands accept `--config-path` (defaults to `configs/default.yaml`). The
+`tune` and `interpret` commands additionally accept `--model-name` and
+`--feature-set`, and read the `tuning` / `interpretability` config sections.
 
 ---
 
-## 4. Configuration System
+## 4. Configuration
 
-### Design
-
-- YAML-based config files
-- loaded via `src/config/`
-- passed via CLI
-
-### Example
-
-```bash
-lifeexp pipeline run --config configs/default.yaml
-````
-
-### Responsibilities
-
-Config should define:
-
-* data paths
-* output paths
-* preprocessing parameters
-* feature settings
-* model hyperparameters
-* random seeds
-
-### Structure
-
-```text
-configs/
-├── default.yaml
-├── dev.yaml
-└── experiments/
-```
-
-### Required improvements
-
-* remove hardcoded values from notebooks
-* centralize all runtime decisions
-* support multiple environments
+- Single YAML file: `configs/default.yaml`
+- Covers: data source paths, panel merging, imputation, cleaning, feature engineering, model splits, hyperparameters, random seeds
+- Loaded at CLI startup and threaded through all downstream functions — no hardcoded values in pipeline code
 
 ---
 
-## 5. Data Layer (`src/data/`)
+## 5. Data Layer (`life_expectancy/data/`)
 
-### Responsibilities
-
-* data loading
-* schema standardization
-* dataset merging
-* basic validation
-
-### Principles
-
-* pure functions when possible
-* explicit inputs/outputs
-* no hidden state
-
-### Required improvements
-
-* ensure all loading logic is reusable
-* unify naming conventions
-* expose key functions to CLI
+| Module | Responsibility |
+|---|---|
+| `loading.py` | CSV and WDI file ingestion |
+| `cleaning.py` | WHO and World Bank schema cleaning |
+| `standardization.py` | Column normalisation across sources |
+| `preprocessing.py` | Panel construction and full preprocessing |
+| `imputation.py` | Missing value strategies |
+| `missingness.py` | Missingness analysis utilities |
+| `panel.py` | Cross-source panel merging |
+| `wdi.py` | World Development Indicators reshaping |
+| `utils.py` | Shared IO helpers |
 
 ---
 
-## 6. Preprocessing & Feature Engineering
+## 6. Feature Engineering (`life_expectancy/features/`)
 
-### Responsibilities
-
-* cleaning
-* missing value handling
-* normalization
-* transformations
-* feature creation
-
-### Principles
-
-* deterministic
-* reproducible
-* parameterized via config
-
-### Required improvements
-
-* move logic out of notebooks
-* ensure pipeline compatibility
-* integrate with modeling pipeline
+| Module | Responsibility |
+|---|---|
+| `feature_engineering.py` | Log transforms, interaction terms, status flags |
+| `feature_selection.py` | Correlation, VIF, manual selection; builds feature-set A/B/C |
+| `temporal.py` | Country-level lag feature generation |
 
 ---
 
-## 7. Modeling Layer (`src/modeling/`)
+## 7. Modeling (`life_expectancy/modeling/`)
 
-### Responsibilities
-
-* train/test splitting
-* pipeline creation
-* model training
-* evaluation
-
-### Submodules
-
-* pipelines
-* baselines
-* advanced models
-* temporal models
-* sequence models
-* experiment runner
-
-### Principles
-
-* use sklearn-style pipelines
-* modular components
-* configurable via config
-
-### Required improvements
-
-* standardize interfaces
-* unify training workflow
-* integrate with CLI
+| Module | Responsibility |
+|---|---|
+| `pipelines.py` | scikit-learn preprocessing pipelines |
+| `train_eval.py` | Training loop and evaluation metrics |
+| `splits.py` | Time-aware train/val/test splitting |
+| `registries.py` | Model registry (named model instances) |
+| `models/baselines.py` | Ridge, Lasso, ElasticNet |
+| `models/tree.py` | HistGradientBoosting, RandomForest, ExtraTrees |
+| `models/boosting.py` | XGBoost, LightGBM, CatBoost wrappers |
+| `models/lstm.py` | LSTM regression (PyTorch) |
+| `models/neural.py` | MLP regression |
+| `experiments/core.py` | Time-split experiment framework |
+| `experiments/boosting.py` | Boosting experiment runner |
+| `experiments/sequence.py` | LSTM sequence experiment runner |
+| `experiments/wdi.py` | WDI panel experiment runner |
+| `tuning.py` | Bayesian hyperparameter search (BayesSearchCV + predefined search spaces) |
 
 ---
 
-## 8. Analysis & Diagnostics (`src/analysis/`)
+## 8. Analysis (`life_expectancy/analysis/`)
 
-### Responsibilities
-
-* error analysis
-* diagnostics
-* evaluation summaries
-* plotting
-
-### Principles
-
-* reusable utilities
-* separate computation from plotting
-
-### Required improvements
-
-* ensure no duplication in notebooks
-* expose reusable diagnostics functions
+| Module | Responsibility |
+|---|---|
+| `diagnostics.py` | Residual analysis, country-level error summaries, diagnostic plots |
+| `interpretability.py` | SHAP feature importance, permutation importance, importance bar plots |
 
 ---
 
-## 9. Utilities (`src/utils/`)
+## 9. Notebooks
 
-### Responsibilities
+Notebooks are for exploration, visualisation, and reporting only. All reusable logic lives in the package.
 
-* IO helpers
-* plotting utilities
-* common helpers
-
-### Required improvements
-
-* centralize file handling
-* standardize output formats
-* avoid duplication across modules
+| Range | Purpose |
+|---|---|
+| 00–02 | Data loading, exploration, cleaning |
+| 03–05 | Descriptive, comparative, correlation analysis |
+| 06–09 | Baseline modeling, diagnostics, visualisation, advanced models |
+| 10–12 | Temporal features, boosting + LSTM, WDI modeling |
+| 13 | Bayesian tuning + SHAP/permutation interpretability |
 
 ---
 
-## 10. Notebooks
-
-### Allowed use
-
-* EDA
-* visualization
-* interpretation
-* reporting
-
-### Not allowed
-
-* core pipeline logic
-* reusable preprocessing
-* production workflows
-
-### Required work
-
-* audit all notebooks
-* identify duplicated logic
-* migrate reusable code to `src/`
-* simplify notebooks to orchestration + visualization
-
----
-
-## 11. Testing
-
-### Scope
-
-* unit tests for core functions
-* integration tests for pipelines
-
-### Structure
+## 10. Testing
 
 ```text
 tests/
-├── data/
-├── modeling/
-├── analysis/
+├── data/          # Unit tests for data layer
+├── features/      # Unit tests for feature engineering and selection
+└── modeling/      # Unit tests for splits, pipelines, evaluation
 ```
 
-### Required work
-
-* test critical functions first
-* ensure deterministic outputs
-* validate edge cases
+Run with: `pytest`
 
 ---
 
-## 12. CI/CD
+## 11. CI/CD
 
-### Goals
-
-* automated testing
-* linting
-* formatting
-
-### Tools
-
-* GitHub Actions
-* pytest
-* ruff / black
-
-### Required work
-
-* CI pipeline setup
-* enforce code quality
+GitHub Actions (`.github/workflows/ci.yml`):
+- **Lint job:** `ruff format --check` + `ruff check`
+- **Test job:** `pip install -e ".[dev,advanced]"` → `pytest`
+- Triggers on push and pull request to `main`
 
 ---
 
-## 13. Dependency Management
+## 12. Dependency Management
 
-### Goals
-
-* reproducibility
-* minimal dependencies
-
-### Required work
-
-* replace large requirements file
-* introduce locking
-* ensure environment consistency
+- Source of truth: `pyproject.toml`
+- `requirements.txt` installs all extras via `-e ".[dev,advanced,sequence]"`
+- For reproducible environments, generate a lock file with `uv pip compile pyproject.toml -o requirements.lock`
 
 ---
 
-## 14. Pipeline Orchestration
-
-### Goal
-
-Run full workflow via CLI
+## 13. Docker
 
 ```bash
-lifeexp pipeline run --config configs/default.yaml
+make build   # builds image
+make run     # mounts data/ and runs lifeexp
+make panel   # runs lifeexp preprocess
 ```
 
-### Steps
-
-1. load data
-2. preprocess
-3. feature engineering
-4. train model
-5. evaluate
-6. generate diagnostics
-
-### Required work
-
-* define pipeline entrypoint
-* connect modules
-* ensure reproducibility
-
----
-
-## 15. Logging & Outputs
-
-### Goals
-
-* consistent outputs
-* traceability
-
-### Required work
-
-* standard output directories
-* structured logging
-* save intermediate artifacts
-
----
-
-## 16. Documentation
-
-### Required files
-
-* README (quickstart)
-* architecture.md
-* module-level docstrings
-
-### Goals
-
-* easy onboarding
-* clear explanation of architecture
+Entrypoint: `lifeexp` (defaults to `--help`)

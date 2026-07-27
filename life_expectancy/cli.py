@@ -8,6 +8,12 @@ import pandas as pd
 import typer
 import yaml
 
+from life_expectancy.analysis.interpretability import (
+    permutation_importance_df,
+    plot_permutation_bar,
+    plot_shap_bar,
+    shap_importance,
+)
 from life_expectancy.data.loading import load_source
 from life_expectancy.data.preprocessing import build_processed_dataset
 from life_expectancy.data.standardization import standardize
@@ -24,6 +30,15 @@ from life_expectancy.modeling.experiments.wdi import (
     make_panel_overlap_split,
 )
 from life_expectancy.modeling.registries import get_default_model_registry
+from life_expectancy.modeling.splits import make_time_split
+from life_expectancy.modeling.train_eval import regression_metrics
+from life_expectancy.modeling.tuning import (
+    AVAILABLE_MODELS,
+    bayes_search_results,
+    build_tunable_pipeline,
+    get_tunable_scale_numeric,
+    run_bayes_search_from_config,
+)
 
 app = typer.Typer(help="Life expectancy analysis CLI.")
 
@@ -447,6 +462,255 @@ def run_train_wdi(
     typer.echo(f"Saved WDI results: {project_path(config, output_path)}")
 
 
+def prepare_feature_split(
+    config: Config,
+    panel_path: str | Path,
+    feature_set: str,
+) -> dict[str, Any]:
+    """Build the time-aware train/test split for one feature set.
+
+    Reuses the same panel, feature sets, and split logic as the training
+    commands so tuning and interpretability operate on identical inputs.
+
+    Args:
+        config: Loaded project configuration.
+        panel_path: Path to the processed panel.
+        feature_set: Feature-set name (`A`, `B`, or `C`).
+
+    Returns:
+        Dictionary with split frames, feature list, and common settings.
+
+    Raises:
+        KeyError: If the feature set is unknown.
+    """
+    settings = get_common_settings(config)
+    panel, _ = load_or_build_panel(config, panel_path)
+    model_df, feature_sets, _ = build_feature_sets_abc(panel, config)
+
+    if feature_set not in feature_sets:
+        available = sorted(feature_sets)
+        raise KeyError(f"Unknown feature set {feature_set!r}. Available: {available}")
+
+    features = feature_sets[feature_set]
+    target_col = settings["target_col"]
+    year_col = settings["year_col"]
+
+    keep_cols = list(dict.fromkeys([*features, target_col, year_col]))
+    work_df = model_df[[col for col in keep_cols if col in model_df.columns]].copy()
+
+    x_train, x_test, y_train, y_test, split_info = make_time_split(
+        work_df,
+        target_col=target_col,
+        year_col=year_col,
+        test_years=settings["test_years"],
+    )
+
+    model_features = [col for col in features if col in x_train.columns]
+
+    return {
+        "x_train": x_train[model_features],
+        "x_test": x_test[model_features],
+        "y_train": y_train,
+        "y_test": y_test,
+        "split_info": split_info,
+        "settings": settings,
+        "features": model_features,
+    }
+
+
+def run_tune(
+    config_path: Path,
+    panel_path: Path,
+    model_name: str,
+    feature_set: str,
+    results_path: Path,
+    best_params_path: Path,
+    compare_path: Path,
+) -> None:
+    """Run Bayesian hyperparameter search and compare against the default model."""
+    if model_name not in AVAILABLE_MODELS:
+        raise typer.BadParameter(
+            f"Unknown model {model_name!r}. Available: {sorted(AVAILABLE_MODELS)}"
+        )
+
+    config = load_config(config_path)
+    split = prepare_feature_split(config, panel_path, feature_set)
+    settings = split["settings"]
+
+    scale_numeric = get_tunable_scale_numeric(model_name)
+
+    # Untuned baseline: same estimator with library default hyperparameters.
+    default_pipeline = build_tunable_pipeline(
+        model_name,
+        split["x_train"],
+        random_state=settings["random_state"],
+        scale_numeric=scale_numeric,
+    )
+    default_pipeline.fit(split["x_train"], split["y_train"])
+    default_metrics = regression_metrics(
+        split["y_test"],
+        default_pipeline.predict(split["x_test"]),
+    )
+
+    # Bayesian search using the project `tuning` config.
+    searcher = run_bayes_search_from_config(
+        model_name,
+        split["x_train"],
+        split["y_train"],
+        config,
+    )
+    tuned_metrics = regression_metrics(
+        split["y_test"],
+        searcher.best_estimator_.predict(split["x_test"]),
+    )
+
+    results = bayes_search_results(searcher)
+    result_cols = [
+        col
+        for col in ["rank_test_score", "mean_test_score", "std_test_score", "params"]
+        if col in results.columns
+    ]
+    save_csv(results[result_cols], project_path(config, results_path))
+
+    best_params = {
+        key: _to_native(value) for key, value in searcher.best_params_.items()
+    }
+    summary = {
+        "model_name": model_name,
+        "feature_set": feature_set,
+        "n_iter": config.get("tuning", {}).get("n_iter", 32),
+        "scoring": config.get("tuning", {}).get(
+            "scoring", "neg_root_mean_squared_error"
+        ),
+        "best_params": best_params,
+        "best_cv_score": float(searcher.best_score_),
+        "default_test_rmse": default_metrics["rmse"],
+        "tuned_test_rmse": tuned_metrics["rmse"],
+        "default_test_r2": default_metrics["r2"],
+        "tuned_test_r2": tuned_metrics["r2"],
+        "rmse_improvement": default_metrics["rmse"] - tuned_metrics["rmse"],
+        "test_years": split["split_info"].extra.get("test_year_values"),
+    }
+    save_json(summary, project_path(config, best_params_path))
+
+    compare_row = {
+        "model_name": model_name,
+        "feature_set": feature_set,
+        "default_test_rmse": default_metrics["rmse"],
+        "tuned_test_rmse": tuned_metrics["rmse"],
+        "rmse_improvement": summary["rmse_improvement"],
+        "default_test_r2": default_metrics["r2"],
+        "tuned_test_r2": tuned_metrics["r2"],
+        "best_cv_score": summary["best_cv_score"],
+    }
+    append_compare_row(compare_row, project_path(config, compare_path))
+
+    typer.echo(
+        f"Tuned {model_name} (set {feature_set}): "
+        f"RMSE {default_metrics['rmse']:.4f} -> {tuned_metrics['rmse']:.4f} "
+        f"(improvement {summary['rmse_improvement']:+.4f})"
+    )
+    typer.echo(f"Saved search results: {project_path(config, results_path)}")
+    typer.echo(f"Saved best params: {project_path(config, best_params_path)}")
+    typer.echo(f"Saved comparison: {project_path(config, compare_path)}")
+
+
+def run_interpret(
+    config_path: Path,
+    panel_path: Path,
+    model_name: str,
+    feature_set: str,
+    tables_dir: Path,
+    figures_dir: Path,
+) -> None:
+    """Train a model and save SHAP + permutation importance tables and plots."""
+    if model_name not in AVAILABLE_MODELS:
+        raise typer.BadParameter(
+            f"Unknown model {model_name!r}. Available: {sorted(AVAILABLE_MODELS)}"
+        )
+
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    config = load_config(config_path)
+    interp_config = config.get("interpretability", {})
+    split = prepare_feature_split(config, panel_path, feature_set)
+    settings = split["settings"]
+
+    pipeline = build_tunable_pipeline(
+        model_name,
+        split["x_train"],
+        random_state=settings["random_state"],
+        scale_numeric=get_tunable_scale_numeric(model_name),
+    )
+    pipeline.fit(split["x_train"], split["y_train"])
+
+    tables_out = project_path(config, tables_dir)
+    figures_out = project_path(config, figures_dir)
+    tables_out.mkdir(parents=True, exist_ok=True)
+    figures_out.mkdir(parents=True, exist_ok=True)
+
+    n_features = interp_config.get("n_features", 20)
+
+    permutation = permutation_importance_df(
+        pipeline,
+        split["x_test"],
+        split["y_test"],
+        n_repeats=interp_config.get("n_repeats", 10),
+        scoring=interp_config.get("scoring", "neg_root_mean_squared_error"),
+        random_state=interp_config.get("random_state", 42),
+    )
+    save_csv(permutation, tables_out / f"interpretability_{model_name}_permutation.csv")
+
+    ax = plot_permutation_bar(permutation, n_features=n_features)
+    ax.figure.tight_layout()
+    ax.figure.savefig(
+        figures_out / f"interpretability_{model_name}_permutation.png", dpi=150
+    )
+    plt.close(ax.figure)
+    typer.echo(f"Saved permutation importance for {model_name}.")
+
+    try:
+        shap_df = shap_importance(
+            pipeline,
+            split["x_test"],
+            max_background_samples=interp_config.get("max_background_samples", 200),
+        )
+    except Exception as exc:  # noqa: BLE001 - SHAP is optional/best-effort
+        typer.echo(f"Skipped SHAP importance: {exc}")
+        return
+
+    save_csv(shap_df, tables_out / f"interpretability_{model_name}_shap.csv")
+    ax = plot_shap_bar(shap_df, n_features=n_features)
+    ax.figure.tight_layout()
+    ax.figure.savefig(figures_out / f"interpretability_{model_name}_shap.png", dpi=150)
+    plt.close(ax.figure)
+    typer.echo(f"Saved SHAP importance for {model_name}.")
+
+
+def append_compare_row(row: dict[str, Any], out_path: str | Path) -> Path:
+    """Append one comparison row to a CSV log, creating it if needed."""
+    output_path = Path(out_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    row_df = pd.DataFrame([row])
+    if output_path.exists():
+        old_df = pd.read_csv(output_path)
+        row_df = pd.concat([old_df, row_df], ignore_index=True)
+
+    row_df.to_csv(output_path, index=False)
+    return output_path
+
+
+def _to_native(value: Any) -> Any:
+    """Convert numpy scalar types to native Python for JSON serialization."""
+    if hasattr(value, "item"):
+        return value.item()
+    return value
+
+
 def infer_wdi_target(config: Config, wdi_panel: pd.DataFrame) -> str:
     """Infer WDI target column after pivoting."""
     wdi_config = config.get("wdi", {})
@@ -572,6 +836,57 @@ def train_wdi(
         panel_path,
         output_path,
         predictions_dir,
+    )
+
+
+@app.command()
+def tune(
+    config_path: Path = typer.Option(Path("configs/default.yaml")),
+    model_name: str = typer.Option("hgb", help="Model to tune (e.g. hgb, ridge, rf)."),
+    feature_set: str = typer.Option("B", help="Feature set A, B, or C."),
+    panel_path: Path = typer.Option(Path("data/processed/panel.csv")),
+    results_path: Path = typer.Option(
+        Path("reports/tables/bayes_tuning_results.csv"),
+        help="CSV of all evaluated Bayesian search configurations.",
+    ),
+    best_params_path: Path = typer.Option(
+        Path("reports/tables/bayes_best_params.json"),
+        help="JSON of best params and tuned-vs-default metrics.",
+    ),
+    compare_path: Path = typer.Option(
+        Path("reports/tables/bayes_tuning_compare.csv"),
+        help="Appended default-vs-tuned comparison log.",
+    ),
+) -> None:
+    """Run Bayesian hyperparameter search (scikit-optimize) for one model."""
+    run_tune(
+        config_path,
+        panel_path,
+        model_name,
+        feature_set,
+        results_path,
+        best_params_path,
+        compare_path,
+    )
+
+
+@app.command()
+def interpret(
+    config_path: Path = typer.Option(Path("configs/default.yaml")),
+    model_name: str = typer.Option("hgb", help="Model to interpret (e.g. hgb, rf)."),
+    feature_set: str = typer.Option("B", help="Feature set A, B, or C."),
+    panel_path: Path = typer.Option(Path("data/processed/panel.csv")),
+    tables_dir: Path = typer.Option(Path("reports/tables")),
+    figures_dir: Path = typer.Option(Path("reports/figures")),
+) -> None:
+    """Compute SHAP and permutation feature importance for one model."""
+    run_interpret(
+        config_path,
+        panel_path,
+        model_name,
+        feature_set,
+        tables_dir,
+        figures_dir,
     )
 
 
