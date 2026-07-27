@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.pipeline import Pipeline
 
 from life_expectancy.modeling.pipelines import (
+    ScaleMode,
     build_model_pipeline,
     build_preprocessor,
     infer_feature_types,
@@ -70,7 +71,7 @@ def run_time_experiment(
     model_name: str,
     model: Any,
     *,
-    scale_numeric: str | bool | None = "standard",
+    scale_numeric: ScaleMode | bool | None = "standard",
     test_years: int = 3,
     run_log_path: str | Path | None = None,
     split_label: str | None = None,
@@ -123,10 +124,13 @@ def run_time_experiment(
 
     numeric_cols, categorical_cols = infer_feature_types(x_train_model)
 
+    # ScaleMode is a typing alias, not a runtime generic; preserve values directly.
+    scale_mode = scale_numeric
+
     preprocessor = build_preprocessor(
         numeric_cols=numeric_cols,
         categorical_cols=categorical_cols,
-        scale_numeric=scale_numeric,
+        scale_numeric=scale_mode,
         add_numeric_missing_indicators=add_numeric_missing_indicators,
     )
 

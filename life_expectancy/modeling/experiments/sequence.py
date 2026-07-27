@@ -163,7 +163,8 @@ def build_country_sequences(
 
             x_rows.append(x_seq)
             y_rows.append(float(y_value))
-            meta_rows.append(group.loc[index, meta_cols].to_dict())
+            meta_row = group.iloc[index][meta_cols].to_dict()
+            meta_rows.append(meta_row)  # type: ignore[arg-type]
 
     if not x_rows:
         raise ValueError("No valid sequences were created.")

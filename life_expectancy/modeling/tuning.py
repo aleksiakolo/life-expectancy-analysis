@@ -13,6 +13,7 @@ from life_expectancy.modeling.models.tree import (
     random_forest_regressor,
 )
 from life_expectancy.modeling.pipelines import (
+    ScaleMode,
     build_model_pipeline,
     build_preprocessor,
     infer_feature_types,
@@ -35,7 +36,7 @@ AVAILABLE_MODELS: tuple[str, ...] = (
 )
 
 # Recommended numeric scaling per tunable model (mirrors the model registry).
-TUNABLE_SCALE_NUMERIC: dict[str, str] = {
+TUNABLE_SCALE_NUMERIC: dict[str, ScaleMode] = {
     "ridge": "standard",
     "lasso": "standard",
     "elasticnet": "standard",
@@ -176,7 +177,7 @@ def get_tunable_estimator(model_name: str, *, random_state: int = 42) -> Any:
     )
 
 
-def get_tunable_scale_numeric(model_name: str) -> str:
+def get_tunable_scale_numeric(model_name: str) -> ScaleMode:
     """Return the recommended numeric scaling mode for a tunable model.
 
     Args:
@@ -238,7 +239,7 @@ def build_tunable_pipeline(
     x_train: pd.DataFrame,
     *,
     random_state: int = 42,
-    scale_numeric: str | bool | None = None,
+    scale_numeric: ScaleMode | bool | None = None,
 ) -> Pipeline:
     """Build a preprocessing-plus-estimator pipeline ready for Bayesian search.
 
@@ -290,7 +291,7 @@ def tune_model(
     scoring: str = "neg_root_mean_squared_error",
     random_state: int = 42,
     n_jobs: int = 1,
-    scale_numeric: str | bool | None = None,
+    scale_numeric: ScaleMode | bool | None = None,
 ) -> Any:
     """Build a tunable pipeline for ``model_name`` and run Bayesian search on it.
 

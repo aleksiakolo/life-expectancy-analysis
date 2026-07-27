@@ -69,7 +69,9 @@ def build_wdi_preprocessor(
     numeric_cols = X.select_dtypes(include=["number"]).columns.tolist()
     categorical_cols = [col for col in X.columns if col not in numeric_cols]
 
-    numeric_steps = [("imputer", SimpleImputer(strategy="median"))]
+    numeric_steps: list[tuple[str, Any]] = [
+        ("imputer", SimpleImputer(strategy="median"))
+    ]
 
     if scale_numeric:
         numeric_steps.append(("scaler", StandardScaler()))
@@ -154,8 +156,8 @@ def fit_evaluate_wdi_model(
 
     pipeline.fit(X_train, y_train)
 
-    val_pred = pipeline.predict(X_val)
-    test_pred = pipeline.predict(X_test)
+    val_pred = np.asarray(pipeline.predict(X_val))
+    test_pred = np.asarray(pipeline.predict(X_test))
 
     val_metrics = regression_metrics(y_val, val_pred)
     test_metrics = regression_metrics(y_test, test_pred)

@@ -1,6 +1,9 @@
+from typing import cast
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
+from matplotlib.figure import Figure
 
 from life_expectancy.analysis.diagnostics import (
     attach_predictions,
@@ -104,7 +107,7 @@ def test_plot_predicted_vs_actual() -> None:
 
     assert ax.get_xlabel() == "Actual"
     assert ax.get_ylabel() == "Predicted"
-    plt.close(ax.figure)
+    plt.close(cast(Figure, ax.figure))
 
 
 def test_plot_residuals_vs_predicted() -> None:
@@ -112,7 +115,7 @@ def test_plot_residuals_vs_predicted() -> None:
 
     assert ax.get_xlabel() == "Predicted"
     assert ax.get_ylabel() == "Residual (pred - actual)"
-    plt.close(ax.figure)
+    plt.close(cast(Figure, ax.figure))
 
 
 def test_plot_residual_hist() -> None:
@@ -120,4 +123,4 @@ def test_plot_residual_hist() -> None:
 
     assert ax.get_xlabel() == "Residual (pred - actual)"
     assert ax.get_ylabel() == "Count"
-    plt.close(ax.figure)
+    plt.close(cast(Figure, ax.figure))

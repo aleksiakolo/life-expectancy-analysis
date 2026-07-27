@@ -69,7 +69,7 @@ def test_build_numeric_steps_invalid_scaler_raises() -> None:
     with pytest.raises(ValueError):
         build_numeric_steps(
             impute_strategy="median",
-            scale_numeric="bad",
+            scale_numeric="bad",  # type: ignore
             add_missing_indicators=False,
         )
 

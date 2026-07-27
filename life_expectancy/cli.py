@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import typer
 import yaml
+from matplotlib.figure import Figure
 
 from life_expectancy.analysis.interpretability import (
     permutation_importance_df,
@@ -547,9 +548,11 @@ def run_tune(
         scale_numeric=scale_numeric,
     )
     default_pipeline.fit(split["x_train"], split["y_train"])
+    default_pred = default_pipeline.predict(split["x_test"])
+    default_pred = default_pred[0] if isinstance(default_pred, tuple) else default_pred
     default_metrics = regression_metrics(
         split["y_test"],
-        default_pipeline.predict(split["x_test"]),
+        default_pred,
     )
 
     # Bayesian search using the project `tuning` config.
@@ -559,9 +562,11 @@ def run_tune(
         split["y_train"],
         config,
     )
+    tuned_pred = searcher.best_estimator_.predict(split["x_test"])
+    tuned_pred = tuned_pred[0] if isinstance(tuned_pred, tuple) else tuned_pred
     tuned_metrics = regression_metrics(
         split["y_test"],
-        searcher.best_estimator_.predict(split["x_test"]),
+        tuned_pred,
     )
 
     results = bayes_search_results(searcher)
@@ -665,11 +670,10 @@ def run_interpret(
     save_csv(permutation, tables_out / f"interpretability_{model_name}_permutation.csv")
 
     ax = plot_permutation_bar(permutation, n_features=n_features)
-    ax.figure.tight_layout()
-    ax.figure.savefig(
-        figures_out / f"interpretability_{model_name}_permutation.png", dpi=150
-    )
-    plt.close(ax.figure)
+    fig = cast(Figure, ax.figure)
+    fig.tight_layout()
+    fig.savefig(figures_out / f"interpretability_{model_name}_permutation.png", dpi=150)
+    plt.close(fig)
     typer.echo(f"Saved permutation importance for {model_name}.")
 
     try:
@@ -684,9 +688,10 @@ def run_interpret(
 
     save_csv(shap_df, tables_out / f"interpretability_{model_name}_shap.csv")
     ax = plot_shap_bar(shap_df, n_features=n_features)
-    ax.figure.tight_layout()
-    ax.figure.savefig(figures_out / f"interpretability_{model_name}_shap.png", dpi=150)
-    plt.close(ax.figure)
+    fig = cast(Figure, ax.figure)
+    fig.tight_layout()
+    fig.savefig(figures_out / f"interpretability_{model_name}_shap.png", dpi=150)
+    plt.close(fig)
     typer.echo(f"Saved SHAP importance for {model_name}.")
 
 

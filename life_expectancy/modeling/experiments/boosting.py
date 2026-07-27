@@ -6,11 +6,11 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
 
 from life_expectancy.modeling.experiments.core import append_run_log
 from life_expectancy.modeling.models.boosting import build_boosting_model
-from life_expectancy.modeling.pipelines import build_preprocessor
+from life_expectancy.modeling.pipelines import ScaleMode, build_preprocessor
 from life_expectancy.modeling.train_eval import regression_metrics
 
 Summary = dict[str, Any]
@@ -109,11 +109,11 @@ def run_boosting_time_experiment(
     year_col: str = "year",
     test_years: int = 3,
     val_years: int = 1,
-    scale_numeric: str | bool | None = "none",
+    scale_numeric: ScaleMode | bool | None = "none",
     model_params: dict[str, Any] | None = None,
     run_log_path: str | Path | None = None,
     id_cols: list[str] | None = None,
-) -> tuple[Summary, pd.DataFrame, Any, Pipeline]:
+) -> tuple[Summary, pd.DataFrame, Any, ColumnTransformer]:
     """Run one time-aware external boosting experiment.
 
     Args:
@@ -190,7 +190,8 @@ def run_boosting_time_experiment(
     )
 
     predictions = model.predict(x_test_t)
-    metrics = regression_metrics(y_test, predictions)
+    predictions_array = np.asarray(predictions)
+    metrics = regression_metrics(y_test, predictions_array)
 
     result = BoostingEvalResult(
         model_name=model_name,
@@ -206,7 +207,7 @@ def run_boosting_time_experiment(
 
     pred_df = build_boosting_prediction_df(
         y_true=y_test,
-        y_pred=predictions,
+        y_pred=predictions_array,
         test_df=test_df,
         id_cols=id_cols,
     )
@@ -223,9 +224,9 @@ def fit_boosting_model(
     *,
     model: Any,
     model_family: str,
-    x_train: np.ndarray,
+    x_train: Any,
     y_train: pd.Series,
-    x_val: np.ndarray,
+    x_val: Any,
     y_val: pd.Series,
 ) -> int | None:
     """Fit one external boosting model with validation data.

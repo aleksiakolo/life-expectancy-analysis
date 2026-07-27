@@ -16,7 +16,7 @@ def test_baseline_mean() -> None:
     model = baseline_mean()
 
     assert isinstance(model, DummyRegressor)
-    assert model.strategy == "mean"
+    assert model.get_params()["strategy"] == "mean"
 
 
 def test_linear_regression() -> None:
@@ -29,32 +29,32 @@ def test_ridge_cv_defaults() -> None:
     model = ridge_cv()
 
     assert isinstance(model, RidgeCV)
-    assert list(model.alphas) == [0.1, 1.0, 10.0, 100.0, 1000.0]
+    assert list(model.get_params()["alphas"]) == [0.1, 1.0, 10.0, 100.0, 1000.0]
 
 
 def test_ridge_cv_custom_config() -> None:
     model = ridge_cv(alphas=[1.0, 2.0], cv=3)
 
-    assert list(model.alphas) == [1.0, 2.0]
-    assert model.cv == 3
+    assert list(model.get_params()["alphas"]) == [1.0, 2.0]
+    assert model.get_params()["cv"] == 3
 
 
 def test_lasso_cv_defaults() -> None:
     model = lasso_cv()
 
     assert isinstance(model, LassoCV)
-    assert list(model.alphas) == [0.1, 1.0, 10.0, 100.0, 1000.0]
-    assert model.random_state == 42
-    assert model.max_iter == 5000
+    assert list(model.get_params()["alphas"]) == [0.1, 1.0, 10.0, 100.0, 1000.0]
+    assert model.get_params()["random_state"] == 42
+    assert model.get_params()["max_iter"] == 5000
 
 
 def test_elasticnet_cv_defaults() -> None:
     model = elasticnet_cv()
 
     assert isinstance(model, ElasticNetCV)
-    assert list(model.l1_ratio) == [0.1, 0.25, 0.5, 0.75, 0.9]
-    assert model.random_state == 42
-    assert model.max_iter == 5000
+    assert list(model.get_params()["l1_ratio"]) == [0.1, 0.25, 0.5, 0.75, 0.9]
+    assert model.get_params()["random_state"] == 42
+    assert model.get_params()["max_iter"] == 5000
 
 
 def test_get_baseline_model() -> None:
@@ -75,8 +75,8 @@ def test_get_baseline_model_with_config() -> None:
     )
 
     assert isinstance(model, RidgeCV)
-    assert list(model.alphas) == [1.0, 10.0]
-    assert model.cv == 3
+    assert list(model.get_params()["alphas"]) == [1.0, 10.0]
+    assert model.get_params()["cv"] == 3
 
 
 def test_get_baseline_model_unsupported_raises() -> None:

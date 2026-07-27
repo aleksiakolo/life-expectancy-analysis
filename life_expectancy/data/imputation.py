@@ -166,7 +166,7 @@ def interpolate_by_country(
         sorted_df = df.sort_values([country_col, year_col])
         interpolated = sorted_df.groupby(country_col, group_keys=False)[col].apply(
             lambda series: series.interpolate(
-                method=method,
+                method=method,  # type: ignore[arg-type]
                 limit=limit,
                 limit_direction="both",
             )

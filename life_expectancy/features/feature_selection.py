@@ -45,7 +45,8 @@ def high_correlation_pairs(
     for i, left_col in enumerate(corr.columns):
         for j in range(i):
             right_col = corr.columns[j]
-            value = corr.iloc[i, j]
+            # Extract as Python float to avoid numpy scalar typing issues
+            value = float(np.real(corr.iat[i, j]))  # type: ignore
 
             if abs(value) > threshold:
                 rows.append(
