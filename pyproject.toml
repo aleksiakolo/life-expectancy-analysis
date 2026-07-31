@@ -91,9 +91,15 @@ select = [
 ignore = [
     "D100",
     "D104",
-    "ANN101",
-    "ANN102",
+    "ANN401",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Test functions don't need Google-style docstrings.
+"tests/*" = ["D103"]
+# `typer.Option(...)` defaults are the required Typer idiom, not the
+# mutable-default footgun B008 warns about.
+"life_expectancy/cli.py" = ["B008"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

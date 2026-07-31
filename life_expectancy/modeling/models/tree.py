@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal, cast
 
 from sklearn.ensemble import (
     ExtraTreesRegressor,
@@ -49,7 +49,7 @@ def random_forest_regressor(
     n_estimators: int = 300,
     max_depth: int | None = None,
     min_samples_leaf: int = 2,
-    max_features: str | float | int | None = "sqrt",
+    max_features: Literal["sqrt", "log2"] | float | int | None = "sqrt",
     random_state: int = 42,
     n_jobs: int = -1,
 ) -> RandomForestRegressor:
@@ -70,7 +70,7 @@ def random_forest_regressor(
         n_estimators=n_estimators,
         max_depth=max_depth,
         min_samples_leaf=min_samples_leaf,
-        max_features=max_features,
+        max_features=cast(Any, max_features),
         random_state=random_state,
         n_jobs=n_jobs,
     )
@@ -81,7 +81,7 @@ def extra_trees_regressor(
     n_estimators: int = 300,
     max_depth: int | None = None,
     min_samples_leaf: int = 2,
-    max_features: str | float | int | None = "sqrt",
+    max_features: Literal["sqrt", "log2"] | float | int | None = "sqrt",
     random_state: int = 42,
     n_jobs: int = -1,
 ) -> ExtraTreesRegressor:
@@ -102,7 +102,7 @@ def extra_trees_regressor(
         n_estimators=n_estimators,
         max_depth=max_depth,
         min_samples_leaf=min_samples_leaf,
-        max_features=max_features,
+        max_features=cast(Any, max_features),
         random_state=random_state,
         n_jobs=n_jobs,
     )

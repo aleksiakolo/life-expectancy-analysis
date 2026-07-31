@@ -62,7 +62,7 @@ def make_country_lag_features(
     for window in rolling_windows:
         new_col = f"{target_col}_rollmean_{window}"
         out[new_col] = grouped[target_col].transform(
-            lambda series: series.shift(1).rolling(window).mean()
+            lambda series, window=window: series.shift(1).rolling(window).mean()
         )
         created_cols.append(new_col)
 

@@ -1,6 +1,11 @@
-import torch
+import pytest
 
-from life_expectancy.modeling.models.lstm import LSTMRegressor, build_lstm_regressor
+torch = pytest.importorskip("torch")
+
+from life_expectancy.modeling.models.lstm import (  # noqa: E402
+    LSTMRegressor,
+    build_lstm_regressor,
+)
 
 
 def test_build_lstm_regressor() -> None:

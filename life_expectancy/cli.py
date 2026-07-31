@@ -30,6 +30,7 @@ from life_expectancy.modeling.experiments.wdi import (
     fit_evaluate_wdi_model,
     make_panel_overlap_split,
 )
+from life_expectancy.modeling.pipelines import ScaleMode
 from life_expectancy.modeling.registries import get_default_model_registry
 from life_expectancy.modeling.splits import make_time_split
 from life_expectancy.modeling.train_eval import regression_metrics
@@ -90,9 +91,11 @@ def save_csv(df: pd.DataFrame, path: str | Path) -> Path:
     return output_path
 
 
-def get_scale_mode(spec: dict[str, Any]) -> str | bool | None:
+def get_scale_mode(spec: dict[str, Any]) -> ScaleMode | bool | None:
     """Get scale setting from a model spec."""
-    return spec.get("scale_numeric", spec.get("scale_mode"))
+    return cast(
+        ScaleMode | bool | None, spec.get("scale_numeric", spec.get("scale_mode"))
+    )
 
 
 def get_common_settings(config: Config) -> dict[str, Any]:

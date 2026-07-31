@@ -5,6 +5,7 @@ from collections.abc import Sequence
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
 
 DEFAULT_ID_COLS = ["country", "year", "region", "income_group"]
 
@@ -164,9 +165,9 @@ def plot_predicted_vs_actual(
     y_true: Sequence[float],
     y_pred: Sequence[float],
     *,
-    ax: plt.Axes | None = None,
+    ax: Axes | None = None,
     title: str = "Predicted vs Actual",
-) -> plt.Axes:
+) -> Axes:
     """Plot predicted values against actual values.
 
     Args:
@@ -199,9 +200,9 @@ def plot_residuals_vs_predicted(
     y_true: Sequence[float],
     y_pred: Sequence[float],
     *,
-    ax: plt.Axes | None = None,
+    ax: Axes | None = None,
     title: str = "Residuals vs Predicted",
-) -> plt.Axes:
+) -> Axes:
     """Plot residuals against predicted values.
 
     Args:
@@ -232,10 +233,10 @@ def plot_residual_hist(
     y_true: Sequence[float],
     y_pred: Sequence[float],
     *,
-    ax: plt.Axes | None = None,
+    ax: Axes | None = None,
     bins: int = 30,
     title: str = "Residual Distribution",
-) -> plt.Axes:
+) -> Axes:
     """Plot residual distribution.
 
     Args:
@@ -263,7 +264,7 @@ def plot_residual_hist(
     return ax
 
 
-def get_axes(ax: plt.Axes | None) -> plt.Axes:
+def get_axes(ax: Axes | None) -> Axes:
     """Return existing axes or create new axes.
 
     Args:

@@ -1,11 +1,16 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from catboost import CatBoostRegressor
+    from lightgbm import LGBMRegressor
+    from xgboost import XGBRegressor
 
 Trial = dict[str, Any]
 
 
-def xgb_regressor(params: dict[str, Any] | None = None):
+def xgb_regressor(params: dict[str, Any] | None = None) -> XGBRegressor:
     """Create an XGBoost regressor.
 
     Args:
@@ -33,7 +38,7 @@ def xgb_regressor(params: dict[str, Any] | None = None):
     return XGBRegressor(**default_params)
 
 
-def lgbm_regressor(params: dict[str, Any] | None = None):
+def lgbm_regressor(params: dict[str, Any] | None = None) -> LGBMRegressor:
     """Create a LightGBM regressor.
 
     Args:
@@ -66,7 +71,7 @@ def lgbm_regressor(params: dict[str, Any] | None = None):
     return LGBMRegressor(**default_params)
 
 
-def catboost_regressor(params: dict[str, Any] | None = None):
+def catboost_regressor(params: dict[str, Any] | None = None) -> CatBoostRegressor:
     """Create a CatBoost regressor.
 
     Args:
@@ -153,9 +158,7 @@ def get_xgb_trial_grid(
     ]:
         trials.append(
             {
-                "trial_name": (
-                    f"xgb_cap_{n_estimators}_" f"sub{subsample}_col{colsample}"
-                ),
+                "trial_name": (f"xgb_cap_{n_estimators}_sub{subsample}_col{colsample}"),
                 "params": {
                     "n_estimators": n_estimators,
                     "learning_rate": 0.05,
@@ -218,7 +221,7 @@ def build_boosting_model(
     model_name: str,
     *,
     params: dict[str, Any] | None = None,
-):
+) -> XGBRegressor | LGBMRegressor | CatBoostRegressor:
     """Build one external boosting model by name.
 
     Args:

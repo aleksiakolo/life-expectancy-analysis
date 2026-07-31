@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
+from typing import Literal
 
 from sklearn.neural_network import MLPRegressor
 
@@ -8,11 +9,11 @@ from sklearn.neural_network import MLPRegressor
 def mlp_regressor(
     *,
     hidden_layer_sizes: Sequence[int] = (128, 64),
-    activation: str = "relu",
-    solver: str = "adam",
+    activation: Literal["relu", "identity", "logistic", "tanh"] = "relu",
+    solver: Literal["lbfgs", "sgd", "adam"] = "adam",
     alpha: float = 1e-4,
     batch_size: str | int = "auto",
-    learning_rate: str = "adaptive",
+    learning_rate: Literal["constant", "invscaling", "adaptive"] = "adaptive",
     learning_rate_init: float = 1e-3,
     max_iter: int = 500,
     early_stopping: bool = True,

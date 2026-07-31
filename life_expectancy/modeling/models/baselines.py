@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from sklearn.dummy import DummyRegressor
 from sklearn.linear_model import ElasticNetCV, LassoCV, LinearRegression, RidgeCV
 
@@ -44,7 +45,7 @@ def ridge_cv(
         alphas = [0.1, 1.0, 10.0, 100.0, 1000.0]
 
     return RidgeCV(
-        alphas=alphas,
+        alphas=np.array(alphas),
         cv=cv,
     )
 
@@ -110,7 +111,7 @@ def elasticnet_cv(
 def get_baseline_model(
     model_name: str,
     config: ModelConfig | None = None,
-):
+) -> DummyRegressor | LinearRegression | RidgeCV | LassoCV | ElasticNetCV:
     """Create a baseline model by name.
 
     Args:

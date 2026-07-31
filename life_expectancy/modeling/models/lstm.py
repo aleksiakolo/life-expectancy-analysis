@@ -22,6 +22,14 @@ class LSTMRegressor(nn.Module):
         num_layers: int = 1,
         dropout: float = 0.1,
     ) -> None:
+        """Build the LSTM layers and regression head.
+
+        Args:
+            input_size: Number of input features per time step.
+            hidden_size: LSTM hidden size.
+            num_layers: Number of LSTM layers.
+            dropout: Dropout probability.
+        """
         super().__init__()
 
         self.lstm = nn.LSTM(

@@ -3,7 +3,9 @@ import pandas as pd
 import pytest
 from sklearn.preprocessing import StandardScaler
 
-from life_expectancy.modeling.experiments.sequence import (
+pytest.importorskip("torch")
+
+from life_expectancy.modeling.experiments.sequence import (  # noqa: E402
     build_country_sequences,
     build_lstm_prediction_df,
     build_lstm_training_targets,

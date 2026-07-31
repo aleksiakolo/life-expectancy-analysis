@@ -5,6 +5,7 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
 from sklearn.inspection import permutation_importance as sklearn_permutation_importance
 from sklearn.pipeline import Pipeline
 
@@ -56,7 +57,11 @@ def shap_importance(
         DataFrame with columns ["feature", "mean_abs_shap"], sorted descending.
     """
     try:
-        import shap
+        # importlib is used to avoid static analysis tools complaining when
+        # 'shap' is not installed in the environment used for linting.
+        import importlib
+
+        shap = importlib.import_module("shap")
     except ImportError as exc:
         raise ImportError("shap is required. Install with: pip install shap") from exc
 
@@ -121,8 +126,10 @@ def permutation_importance_df(
         pd.DataFrame(
             {
                 "feature": list(x_test.columns),
-                "importance_mean": result.importances_mean,
-                "importance_std": result.importances_std,
+                # sklearn.permutation_importance may return a Bunch or a dict-like
+                # object depending on sklearn version; use item access to be safe
+                "importance_mean": result["importances_mean"],
+                "importance_std": result["importances_std"],
             }
         )
         .sort_values("importance_mean", ascending=False)
@@ -133,10 +140,10 @@ def permutation_importance_df(
 def plot_shap_bar(
     importance_df: pd.DataFrame,
     *,
-    ax: plt.Axes | None = None,
+    ax: Axes | None = None,
     n_features: int = 20,
     title: str = "Mean |SHAP| Feature Importance",
-) -> plt.Axes:
+) -> Axes:
     """Plot a horizontal bar chart of SHAP feature importance.
 
     Args:
@@ -164,10 +171,10 @@ def plot_shap_bar(
 def plot_permutation_bar(
     importance_df: pd.DataFrame,
     *,
-    ax: plt.Axes | None = None,
+    ax: Axes | None = None,
     n_features: int = 20,
     title: str = "Permutation Feature Importance",
-) -> plt.Axes:
+) -> Axes:
     """Plot a horizontal bar chart of permutation importance with error bars.
 
     Args:
